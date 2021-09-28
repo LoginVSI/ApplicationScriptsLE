@@ -25,12 +25,12 @@ public class Teams : ScriptBase
         var Verifyteams = Process.GetProcessesByName("teams").Where(p => p.SessionId == CurrentSessionID).Any(); //Verify if current user is running teams
         var rand = new Random();   // Define random integer
         var RandomNumber = rand.Next(0,4);  // Console.WriteLine("My wait time is = " + RandomNumber);
-        var RandomNumberOne = rand.Next(0,9); // first integer in chatRecipient number
-        var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number
-        var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number
-        string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree);
+        var RandomNumberOne = rand.Next(0,4); // first integer in chatRecipient number between 0 and 4
+        var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number between 0 and 9
+        var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number between 0 and 9
+        string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree); //WVD USER 0001 to WVD USER 0499
         
-        //Set Teams Reg values
+        //Set Teams Reg values - see end of script to enable reg functions
         //Wait(seconds:3, showOnScreen:true, onScreenText:"Setting Reg Values");
         //RegImport(create_regfile(@"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Teams",@"LoggedInOnce",@"dword:00000001"));
         
