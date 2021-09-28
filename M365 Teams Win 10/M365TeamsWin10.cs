@@ -5,10 +5,10 @@
 //      Start a meeting from a non-test user that is in the same org, at teams.microsoft.com, and present something
 //      Works with M365 Image for Azure Win 10, no email registration required to activate teams per user
 
-using LoginPI.Engine.ScriptBase;
-using System;
-using System.Diagnostics;
-using System.Linq;
+using LoginPI.Engine.ScriptBase; //standard class
+using System; //used for rand and other
+using System.Diagnostics; // used for ?
+using System.Linq; // used for identifying current session ID
 
 public class Teams : ScriptBase
 {
