@@ -41,7 +41,7 @@ public class M365PowerPoint524 : ScriptBase
         START(mainWindowTitle:"*PowerPoint*", mainWindowClass:"*PPTFrameClass*", timeout:30);
         MainWindow.Maximize();
         Wait(15);
-        IWindow initDialog;        
+/*        IWindow initDialog;        
         while ((initDialog = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10, continueOnError: true)) is object)
         {
             Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
@@ -49,9 +49,9 @@ public class M365PowerPoint524 : ScriptBase
             initDialog.Type("{ESC}");
             Wait(5);
         }
+*/
 
-
-/*        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
+        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
         // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
         //var SignInToSetup = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10);
@@ -59,7 +59,7 @@ public class M365PowerPoint524 : ScriptBase
         Wait(1);        
         SignInToSetup.Type("{ESC}", cpm:50);
         Wait(1);  
-*/
+
 
         // Open "Open File" window and start measurement.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Open File Window");

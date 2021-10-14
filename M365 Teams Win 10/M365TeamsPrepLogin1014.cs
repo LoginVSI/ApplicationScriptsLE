@@ -1,17 +1,15 @@
-// MicrosoftTeams script version 20210928
+// MicrosoftTeams script version 20211014
 // Developed by David Glaeser and Blair Parkhill
 // Uses path "C:\Program Files (x86)\Microsoft\Teams\current\Teams.exe"
-// Pre-reqs
-//      Start a meeting from a non-test user that is in the same org, at teams.microsoft.com, and present something
-//      Works with M365 Image for Azure Win 10, no email registration required to activate teams per user
-// Notes
-//      Oct 8 update (See Teams > Help > What's New) changes sign in window, recommend using prep script to login/password/popup
-//      10/14 - Changed Join Meeting Code 
+// Teams > Help > What's new - shows update on Oct8
+//// Oct 8 Update changes sign in and GUI control addresses
+//// Recommend running a Teams prep script
+// Start a meeting from a non-test user that is in the same org, at teams.microsoft.com, and present something
 
-using LoginPI.Engine.ScriptBase; //standard class
-using System; //used for rand and other
-using System.Diagnostics; // used for ?
-using System.Linq; // used for identifying current session ID
+using LoginPI.Engine.ScriptBase;
+using System;
+using System.Diagnostics;
+using System.Linq;
 
 public class Teams : ScriptBase
 {
@@ -28,12 +26,12 @@ public class Teams : ScriptBase
         var Verifyteams = Process.GetProcessesByName("teams").Where(p => p.SessionId == CurrentSessionID).Any(); //Verify if current user is running teams
         var rand = new Random();   // Define random integer
         var RandomNumber = rand.Next(0,4);  // Console.WriteLine("My wait time is = " + RandomNumber);
-        var RandomNumberOne = rand.Next(0,4); // first integer in chatRecipient number between 0 and 4
-        var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number between 0 and 9
-        var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number between 0 and 9
-        string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree); //WVD USER 0001 to WVD USER 0499
+        var RandomNumberOne = rand.Next(0,9); // first integer in chatRecipient number
+        var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number
+        var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number
+        string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree);
         
-        //Set Teams Reg values - see end of script to enable reg functions
+        //Set Teams Reg values
         //Wait(seconds:3, showOnScreen:true, onScreenText:"Setting Reg Values");
         //RegImport(create_regfile(@"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Teams",@"LoggedInOnce",@"dword:00000001"));
         
@@ -48,8 +46,9 @@ public class Teams : ScriptBase
         Wait(15, showOnScreen: true, onScreenText: "Login to Teams if prompted");
         try //Needs to be update with correct Catch information to prevent script error out
         {
-          var Loginwindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "Microsoft Teams", processName : "Teams"); 
-          Loginwindow.FindControl(className : "Button", title : "Sign in").Click();
+          //var Loginwindow = FindWindow(className : "Pane:Chrome_WidgetWin_0", title : "Microsoft Teams", processName : "Teams"); 
+          //Loginwindow.FindControl(className : "Button", title : "Sign in").Click();
+          //MainWindow.FindControl(className : "Document:Chrome_RenderWidgetHostHWND", title : "Chrome Legacy Window", text : "*Loading*");
           Wait(15, showOnScreen: true, onScreenText: "Typing in password for user");
           Click(x:960,y:540); // Click on window to set focus
           Type("{TAB}",cpm: 300); // Activate the password field
@@ -63,19 +62,7 @@ public class Teams : ScriptBase
         StopTimer(name:"Check_Teams_State");
 
         // Let's get rid of any first time use popups
-        Wait(15, showOnScreen: true, onScreenText: "Let's get rid of any first time use popups");
-        //// Seeing barcode for mobile app - may have to try/catch this
-        Wait(3, showOnScreen: true, onScreenText: "Dismiss - Get the Teams Mobile App");
-        try{
-          //MainWindow.FindControl(className : "Document", text : "*Get the Teams mobile app*").Click();
-          Click(x:960,y:540); // Click on window to set focus
-          Type("{TAB}",cpm: 300); // Activate the password field
-          Type("{ENTER}",cpm: 300); //Enter password - can be changed to use encrypted pwd if necessary
-        }
-        catch{}
-        finally{}
-        //// Dismiss other popups
-        Wait(3, showOnScreen: true, onScreenText: "Dismiss - Any other Popups");
+        Wait(3, showOnScreen: true, onScreenText: "Let's get rid of any first time use popups");
         try{
         var TeamsWindow0 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
         TeamsWindow0.FindControl(className : "Button", title : "Continue").Click();
@@ -98,7 +85,7 @@ public class Teams : ScriptBase
 
         // Leave meeting if it is still connected
         // MainWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[2]/Group/Button[4]/Pane").Click();
-        Wait(3, showOnScreen: true, onScreenText: "Leaving the meeting if it's still connected");
+/*      Wait(3, showOnScreen: true, onScreenText: "Leaving the meeting if it's still connected");
         try{
         var TeamsWindow2 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
         var callInProgressList = TeamsWindow2.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[2]/Group"); //The next 4 lines help with the changing message list
@@ -108,7 +95,8 @@ public class Teams : ScriptBase
         }
         catch{}
         finally{}
-
+*/
+/*
         // Starting Performance testing
         Wait(15, showOnScreen: true, onScreenText: "Time to test Teams");
         
@@ -141,9 +129,7 @@ public class Teams : ScriptBase
         }
         catch{}
         finally{}
-        /*try {TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[3]/List/ListItem/Text").Click(); }
-        catch{}
-        finally{}*/
+
         Wait(interactionWait);
         TeamsWindow.FindControl(className : "Edit", title : "Type a new message*").Click();
         Wait(interactionWait);
@@ -180,8 +166,8 @@ public class Teams : ScriptBase
         catch{}
         finally{}
         Wait(interactionWait);
-        StopTimer(name:"Join_Meeting");
         Wait(3, showOnScreen: true, onScreenText: $"Participate in the meeting for {meetingWait} seconds");
+        StopTimer(name:"Join_Meeting");
         Wait(meetingWait);
         //TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[3]/Button[7]/Pane").Click();
         //TeamsWindow.FindControl(className : "Button", title : "Hang up").Click();
@@ -191,7 +177,7 @@ public class Teams : ScriptBase
         var hangUpBtn = hangUpNow.FindControlWithXPath(xPath : "Pane");
         hangUpBtn.Click();
         Wait(5);
-
+*/
         // End script message
         Wait(3, showOnScreen: true, onScreenText: "Ending Teams script");
     }

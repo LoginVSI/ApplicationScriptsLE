@@ -1,0 +1,100 @@
+// MicrosoftTeams script version 20210917
+// Developed by David Glaeser and Blair Parkhill
+// Uses path "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.exe"
+// Start a meeting from a non-test user that is in the same org, at teams.microsoft.com, and present something
+
+using LoginPI.Engine.ScriptBase;
+using System;
+using System.Diagnostics;
+using System.Linq;
+
+public class VIsualStudio_WebAppDev : ScriptBase
+{
+    private void Execute()
+    {
+
+        // Script variables
+        int interactionWait = 3;    // Wait time between interactions
+        //int meetingWait = 60;    // Wait time between interactions
+        //string testMessage = "This is a test message.";         // Chat test message
+        //var temp = GetEnvironmentVariable("TEMP"); // Define environementvariables to use with Workload
+        //var rand = new Random();   // Define random integer
+        //var RandomNumber = rand.Next(0,4);  // Console.WriteLine("My wait time is = " + RandomNumber);
+        //var RandomNumberOne = rand.Next(0,9); // first integer in chatRecipient number
+        //var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number
+        //var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number
+        //string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree);
+        
+        //Set VS Reg values - NOTE, make sure to enable the reg stuff at the bottom of the script if you want to do this
+        //Wait(seconds:3, showOnScreen:true, onScreenText:"Setting Reg Values");
+        //RegImport(create_regfile(@"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Teams",@"LoggedInOnce",@"dword:00000001"));
+        
+        // Start VS
+        Wait(3, showOnScreen: true, onScreenText: "Starting Visual Studio");
+        START(mainWindowTitle: "*Visual Studio", processName: "devenv");
+        Wait(5);
+        // AT THIS PART WE NEED TO CHECK AND SEE IF VS IS RUNNING WITHOUT A LOGIN PROMPT. IF LOGIN PROMPT = YES, THEN DO THE FOLLOW, IF NO PROMPT, THEN CREATE A NEW PROJECT. MAYBE USE FIND WINDOW TO SEE
+        // IF THE APP STARTED IN READY MODE
+        
+        //Let's open up a new project
+        Type("{SHIFT+TAB}{SHIFT+TAB}",cpm: 300); 
+        Wait(interactionWait);
+        Type("{ENTER}");
+        Wait(interactionWait);
+        Type("{ALT+S}");
+        Wait(interactionWait);
+        Type("ASP.NET Web Application",cpm: 400);
+        Wait(interactionWait);
+        Type("{TAB}{TAB}{TAB}{TAB}{TAB}");
+        Wait(interactionWait);
+        Type("{ENTER}");
+        Wait(interactionWait);
+        Type("Microsoft Visual Studio (window)",cpm: 400);
+        Wait(interactionWait);
+        Type("{SHIFT+TAB}{ENTER}");
+        Wait(interactionWait);
+        Type("{SHIFT+TAB}{SHIFT+TAB}{ENTER}");
+        //End new Project opening logic
+        
+        //Start Project internal logic
+        Wait(10); //Longer wait to ensure proper load
+        //NOTE if this project name already exists this script will fail/Error out.  This is in user folder under source/repos, the folder should be removed at start of each run if it exists
+       // MainWindow.FindControl(className : "MenuItem:MenuItem", title : "View",timeout: 30).Click();
+        Type("{CTRL+\\}{CTRL+E}",cpm: 30);
+        
+        
+        /*Type("{ENTER}",cpm: 300); // Activate the password field
+        Wait(interactionWait);
+        Type("{ENTER}",cpm: 300);*/ // Activate the password field
+        Wait(999);
+        //MainWindow.Focus();
+        
+        // End script message
+        Wait(3, showOnScreen: true, onScreenText: "Ending Teams script");
+        STOP();
+    }
+   
+/*    private string create_regfile(string key, string value, string data)
+    {            
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "reg.reg");
+
+        sb.AppendLine("Windows Registry Editor Version 5.00");
+        sb.AppendLine();
+        sb.AppendLine($"[{key}]");
+        if(data.ToLower().Contains("dword"))
+        {
+            sb.AppendLine($"\"{value}\"={data.ToLower()}");
+        }
+        else
+        {
+            sb.AppendLine($"\"{value}\"=\"{data}\"");
+        }
+        sb.AppendLine();
+
+        System.IO.File.WriteAllText(file, sb.ToString());
+
+        return file;
+    }
+    */
+}
