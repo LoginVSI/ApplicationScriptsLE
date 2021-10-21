@@ -109,7 +109,7 @@ public class VIsualStudio_WebAppDev : ScriptBase
         //Start Building the Solution
         //Check out error list
         StartTimer(name: "Open_Project");
-        var ProjectWindow = FindWindow(className : "Wpf Window:Window", title : "Microsoft Visual Studio (window) - Microsoft Visual Studio", processName : "devenv", timeout : 60);
+        var ProjectWindow = FindWindow(className : "Wpf Window:Window", title : "Microsoft Visual Studio (window) - Microsoft Visual Studio", processName : "devenv", timeout : 90);
         StopTimer(name: "Open_Project");
         Wait(10, showOnScreen: true, onScreenText: "Let's build the solution"); //Longer wait to ensure proper load
         try {

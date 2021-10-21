@@ -5,8 +5,9 @@
 //      Start a meeting from a non-test user that is in the same org, at teams.microsoft.com, and present something
 //      Works with M365 Image for Azure Win 10, no email registration required to activate teams per user
 // Notes
-//      Oct 8 update (See Teams > Help > What's New) changes sign in window, recommend using prep script to login/password/popup
-//      10/14 - Changed Join Meeting Code 
+//      Oct 8 update (See Teams > Help > What's New) changes sign in window
+//      10/14 - Changed Join Meeting Code
+//      10/21 - Fixed popup issue with Ts & Cs
 
 using LoginPI.Engine.ScriptBase; //standard class
 using System; //used for rand and other
@@ -49,7 +50,7 @@ public class Teams : ScriptBase
         try //Needs to be update with correct Catch information to prevent script error out
         {
           var Loginwindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "Microsoft Teams", processName : "Teams"); 
-          Loginwindow.FindControl(className : "Button", title : "Sign in").Click();
+          Loginwindow.FindControl(className : "Button", title : "Sign in*").Click();
           Wait(15, showOnScreen: true, onScreenText: "Typing in password for user");
           Click(x:960,y:540); // Click on window to set focus
           Type("{TAB}",cpm: 300); // Activate the password field
@@ -67,21 +68,22 @@ public class Teams : ScriptBase
         //// Seeing barcode for mobile app - may have to try/catch this
         Wait(3, showOnScreen: true, onScreenText: "Dismiss - Get the Teams Mobile App");
         try{
-          //MainWindow.FindControl(className : "Document", text : "*Get the Teams mobile app*").Click();
+          var TeamsMobileAppPopup = MainWindow.FindControl(className : "Document", text : "*Get the Teams mobile app*");
+          TeamsMobileAppPopup.Click();
           Click(x:960,y:540); // Click on window to set focus
-          Type("{TAB}",cpm: 300); // Activate the password field
-          Type("{ENTER}",cpm: 300); //Enter password - can be changed to use encrypted pwd if necessary
+          Type("{TAB}",cpm: 300);
+          Type("{ENTER}",cpm: 300);
         }
         catch{}
         finally{}
         //// Dismiss other popups
-        Wait(3, showOnScreen: true, onScreenText: "Dismiss - Any other Popups");
+        Wait(3, showOnScreen: true, onScreenText: "Dismiss - terms and conditions");
         try{
-        var TeamsWindow0 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
-        TeamsWindow0.FindControl(className : "Button", title : "Continue").Click();
-        Wait(5);
-        Type("{ESC}");
-        Log(message:"We did have to manage first use popups for this session");
+          var TeamsWindow0 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
+          TeamsWindow0.FindControl(className : "Button", title : "Continue").Click();
+          Wait(5);
+          Type("{ESC}");
+          Log(message:"We did have to manage first use popups for this session");
         }
         catch{}
         finally{}
