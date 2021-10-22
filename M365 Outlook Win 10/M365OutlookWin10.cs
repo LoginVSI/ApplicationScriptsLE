@@ -1,5 +1,7 @@
-// MicrosoftOutlook script version 20210928
+// MicrosoftOutlook script version 20211022
 // App Execution should be set to outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
+// By Blair Parkhill - coauthor: Henri K.
+// 1022 Update - Better logic for Sign In to Setup
 
 using LoginPI.Engine.ScriptBase;
 using System.IO;
@@ -45,17 +47,20 @@ public class M365Outlook524 : ScriptBase
         Wait(seconds:3, showOnScreen:true, onScreenText:"Starting Outlook");
         START(mainWindowTitle:"Inbox*", mainWindowClass:"Win32 Window:rctrl_renwnd32", processName:"OUTLOOK", timeout:30, continueOnError:true);
         MainWindow.Maximize();
-        Wait(15);
+        //Wait(15);
 
         //BEGIN TRIAL LICENSE POPUP AUTOMATION ############################### If you are using M365 Enterprise LIcensing you can comment this section out
 
         // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
         // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK").Focus();
+        StartTimer("SignInToSetupWindow");
+        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK", timeout: 30);
+        StopTimer("SignInToSetupWindow");
+        SignInToSetup.Click();
         Wait(1);        
         SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(15);
+        Wait(1);
 
         // If the "Your privacy option" Window Shows, click the "Close" button, otherwise just proceed.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting rid of privacy notice");

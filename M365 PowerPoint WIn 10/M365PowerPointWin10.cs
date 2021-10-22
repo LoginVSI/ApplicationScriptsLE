@@ -1,4 +1,6 @@
-// MicrosoftPowerpoint script version 20210813
+// MicrosoftPowerpoint script version 20211022
+// By Blair Parkhill - coauthor: Henri K.
+// 1022 Update - Better logic for Sign In to Setup
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -40,7 +42,7 @@ public class M365PowerPoint524 : ScriptBase
         Wait(seconds:3, showOnScreen:true, onScreenText:"Starting PowerPoint");
         START(mainWindowTitle:"*PowerPoint*", mainWindowClass:"*PPTFrameClass*", timeout:30);
         MainWindow.Maximize();
-        Wait(15);
+        //Wait(15);
 /*        IWindow initDialog;        
         while ((initDialog = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10, continueOnError: true)) is object)
         {
@@ -54,11 +56,17 @@ public class M365PowerPoint524 : ScriptBase
         // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
         // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
-        //var SignInToSetup = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10);
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "POWERPNT").Focus();
+        StartTimer("SignInToSetupWindow");
+        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "POWERPNT", timeout: 30);
+        StopTimer("SignInToSetupWindow");
+        SignInToSetup.Click();
         Wait(1);        
         SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(1);  
+        Wait(1);
+        //var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "POWERPNT").Focus();
+        //Wait(1);        
+        //SignInToSetup.Type("{ESC}", cpm:50);
+        //Wait(1);  
 
 
         // Open "Open File" window and start measurement.

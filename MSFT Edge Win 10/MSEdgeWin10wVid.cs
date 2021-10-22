@@ -14,13 +14,28 @@ public class MicrosoftEdge83 : ScriptBase
               
         // Define random integer
         var rand = new Random();
-        var RandomNumber = rand.Next(5,9);
+        var PageBrowseTime = rand.Next(20,30); //How long we stay on the starting web page (4-9 seconds)
+        var VideoDuration = rand.Next(30,120); //How long we stay on the starting web page (4-9 seconds)
         
         // Download the VSIwebsite.zip from the appliance and unzip in the %temp% folder
+        //// clean up existing site
+        Wait(seconds:3, showOnScreen:true, onScreenText:"Setting up the Local Website");
+        StartTimer("Delete_and_Download");
+        if (System.IO.Directory.Exists($"{temp}\\LoginPI\\vsiwebsite"))
+        {
+            Log("Removing existing website folder");
+            RemoveFolder(path: $"{temp}\\LoginPI\\vsiwebsite");
+        }
+        else
+        {
+            Log("Project folder does not exist");
+        }
+
+        //Grab the website archive and extract it
         CopyFile(KnownFiles.WebSite, $"{temp}\\LoginPI\\vsiwebsite.zip", overwrite: true);
         UnzipFile($"{temp}\\LoginPI\\vsiwebsite.zip", $"{temp}\\LoginPI\\vsiwebsite", overWrite: true);
 
-/*        if(!(DirectoryExists($"{temp}\\LoginPI\\vsiwebsite")))
+        if(!(DirectoryExists($"{temp}\\LoginPI\\vsiwebsite")))
         {
             Log("Downloading File");
             CopyFile(KnownFiles.WebSite, $"{temp}\\LoginPI\\vsiwebsite.zip");
@@ -30,34 +45,30 @@ public class MicrosoftEdge83 : ScriptBase
         {
             Log("File already exists");
         }
-*/        
+        StopTimer("Delete_and_Download");
+        
         // Start Browser
-        Wait(seconds:33, showOnScreen:true, onScreenText:"Start Edge");
+        Wait(seconds:3, showOnScreen:true, onScreenText:"Start Edge");
         StartBrowser();
         MainWindow.Maximize();
-        Wait(RandomNumber);
+        MouseDown();
+        MouseUp();
+        Wait(5);
+        MainWindow.Type("{PAGEDOWN}".Repeat(2));
+        Wait(2);
+        MainWindow.Type("{PAGEUP}".Repeat(1));
+        Wait(PageBrowseTime);
 /*        
         // Navigate web
         Wait(seconds:3, showOnScreen:true, onScreenText:"NPR");
         Navigate("https://apple.com");
         Wait(RandomNumber);
         Wait(RandomNumber);
-       
-        // Navigate web
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Microsoft");
-        Navigate("https://microsoft.com");
-        Wait(RandomNumber);
-        Wait(RandomNumber);
-       
-        // Navigate web
-        Wait(seconds:3, showOnScreen:true, onScreenText:"YouTube");
-        Navigate("https://youtube.com");
-        Wait(RandomNumber);
-        Wait(RandomNumber);
 */
         // Navigate to the local html file
+        Wait(seconds:3, showOnScreen:true, onScreenText:"Navigating to Local Website");
         Navigate($"file:///{temp}/LoginPI/vsiwebsite/chromescript/logonpage.html");
-        Wait(RandomNumber);
+        Wait(10);
 
         // Click on the login button
         // Browser.FindWebComponentBySelector("button[id='logonbutton']").Click();
@@ -66,7 +77,7 @@ public class MicrosoftEdge83 : ScriptBase
         Type("{TAB}");
         Wait(1);
         Type("{SPACE}");
-        Wait(1);
+        Wait(3);
 
         // Enter login credentials
         Browser.FindWebComponentBySelector("input[id='username']").Click();
@@ -74,19 +85,19 @@ public class MicrosoftEdge83 : ScriptBase
         Browser.FindWebComponentBySelector("input[id='password']").Click();
         Type("Admin");
         Browser.FindWebComponentBySelector("button[id='submit']").Click();
-
+        
         // Time the logon
         StartTimer("Logon");
-        Browser.FindWebComponentBySelector("a[id='videopage']");
+        Browser.FindWebComponentBySelector("a[id='videopage']", timeout: 30, continueOnError: false);
         StopTimer("Logon");
         Wait(2);
 
         // Select the videopage tab
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Let's watch a video of a drive along the Platte River in Colorado");
+        Wait(3, showOnScreen: true, onScreenText: $"Watch Platte River for {VideoDuration} seconds");
         Browser.FindWebComponentBySelector("a[id='videopage']").Click();
 
-        // Watch video for 30 seconds
-        Wait(60);
+        // Watch video for VideoDuration seconds
+        Wait(VideoDuration);
 
         // Navigate back to main homepage and Click on Article
         //MainWindow.FindControl(className : "Button:ToolbarButton", title : "Back").Click();

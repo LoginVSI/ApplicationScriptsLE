@@ -1,4 +1,6 @@
-// MicrosoftWord script version 20210813
+// MicrosoftWord script version 20211022
+// By Blair Parkhill
+// 1022 update - added better logic for Sign In to Setup Window and also found issue with typing long sentences, so broke it up
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -40,7 +42,7 @@ public class M365Word813 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Starting Word");
         START(mainWindowTitle: "*Word*", mainWindowClass: "Win32 Window:OpusApp", processName: "WINWORD", timeout: 30);
         MainWindow.Maximize();
-        Wait(30);
+        //Wait(30);
 
         // MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10, continueOnError: true)?.Type("{ESC}");
 
@@ -48,7 +50,10 @@ public class M365Word813 : ScriptBase
         // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
         //var SignInToSetup = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10);
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "WINWORD").Focus();
+        StartTimer("SignInToSetupWindow");
+        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "WINWORD", timeout: 30);
+        StopTimer("SignInToSetupWindow");
+        SignInToSetup.Click();
         Wait(1);        
         SignInToSetup.Type("{ESC}", cpm:50);
         Wait(1);
@@ -91,11 +96,17 @@ public class M365Word813 : ScriptBase
         //Type in the document (in the future create a txt file of content and type randomly from it)
         // newWord.Type("{CTRL+END}");
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Type");
-        newWord.Type("The snappy guy, who was a little rough around the edges, blossomed. The old fogey sat down in order to pass the time. The slippery townspeople had an unshakable fear of ostriches while encountering a whirling dervish. The prisoner stepped in a puddle while chasing the neighbor's cat out of the yard. The gal thought about mowing the lawn during a pie fight. A darn good bean-counter had a pen break while chewing on it while placing one ear to the ground.", cpm: 600);
+        newWord.Type("The snappy guy, who was a little rough around the edges, blossomed. The old fogey sat down in order to pass the time. ", cpm: 900);
+        newWord.Type("The slippery townspeople had an unshakable fear of ostriches while encountering a whirling dervish. ", cpm: 900);
+        newWord.Type("The prisoner stepped in a puddle while chasing the neighbor's cat out of the yard. The gal thought about mowing the lawn during a pie fight. ", cpm: 900);
+        newWord.Type("A darn good bean-counter had a pen break while chewing on it while placing one ear to the ground. ", cpm: 900);
         Wait(1);
 
         newWord.Type("{ENTER}");
-        newWord.Type("The intelligent baby felt sick after watching a silent film. As usual, the beekeeper spoke on a cellphone in nothing flat. A behemoth of a horde of morons committed a small crime and then chuckled arrogantly. The typical girl frequently wore a toga. The meowing guy, who had a little too much confidence in himself, threw a gutter ball in a rather graceful manner. The wicked Bridge Club shrugged both shoulders, which was considered a sign of great wisdom.", cpm: 600);
+        newWord.Type("The intelligent baby felt sick after watching a silent film. As usual, the beekeeper spoke on a cellphone in nothing flat. ", cpm: 900);
+        newWord.Type("A behemoth of a horde of morons committed a small crime and then chuckled arrogantly. The typical girl frequently wore a toga. ", cpm: 900);
+        newWord.Type("The meowing guy, who had a little too much confidence in himself, threw a gutter ball in a rather graceful manner. ", cpm: 900);
+        newWord.Type("The wicked Bridge Club shrugged both shoulders, which was considered a sign of great wisdom. ", cpm: 900);
 
         //Copy some text and paste it
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Copy & Paste");

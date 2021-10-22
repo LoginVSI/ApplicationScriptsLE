@@ -115,7 +115,7 @@ public class Teams : ScriptBase
         Wait(15, showOnScreen: true, onScreenText: "Time to test Teams");
         
         // Chat test function.  Try/Catch is in place as some items names are not consistent
-        var TeamsWindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams", processName : "Teams"); 
+        var TeamsWindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams"); 
         TeamsWindow.Focus();
         Wait(3, showOnScreen: true, onScreenText: "Let's Chat");
         try { chatBtn = TeamsWindow.FindControl(className: "Button", title: "Chat Toolbar more options", timeout: 30); }

@@ -40,16 +40,19 @@ public class M365Excel524 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Starting Excel");
         START(mainWindowTitle: "*Excel*", mainWindowClass: "*XLMAIN*", timeout: 30);
         MainWindow.Maximize();
-        Wait(30);
+        //Wait(30);
 
         // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
         // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
         // MainWindow.FindControlWithXPath(xPath: "Win32 Window:NUIDialog", timeout: 10, continueOnError: true)?.Type("{ESC}");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "EXCEL").Focus();
+        StartTimer("SignInToSetupWindow");
+        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "EXCEL", timeout: 30);
+        StopTimer("SignInToSetupWindow");
+        SignInToSetup.Click();
         Wait(1);        
         SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(10);
+        Wait(1);
 
         // If the "Your privacy option" Window Shows, click the "Close" button, otherwise just proceed.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting rid of privacy notice");
