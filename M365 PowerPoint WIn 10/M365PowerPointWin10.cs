@@ -1,6 +1,4 @@
-// MicrosoftPowerpoint script version 20211022
-// By Blair Parkhill - coauthor: Henri K.
-// 1022 Update - Better logic for Sign In to Setup
+// MicrosoftPowerpoint script version 20210813
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -42,32 +40,19 @@ public class M365PowerPoint524 : ScriptBase
         Wait(seconds:3, showOnScreen:true, onScreenText:"Starting PowerPoint");
         START(mainWindowTitle:"*PowerPoint*", mainWindowClass:"*PPTFrameClass*", timeout:30);
         MainWindow.Maximize();
-        //Wait(15);
-/*        IWindow initDialog;        
-        while ((initDialog = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10, continueOnError: true)) is object)
+
+        var newDocName = "edited";
+        var appWasLeftOpen = MainWindow.GetTitle().Contains(newDocName);
+        if (appWasLeftOpen)
         {
-            Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
-            Log("Closing init dialog");
-            initDialog.Type("{ESC}");
-            Wait(5);
+            Log("Word was left open from previous run");
         }
-*/
+        else
+        {
+            Wait(10);
 
-        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
-        // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
-        StartTimer("SignInToSetupWindow");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "POWERPNT", timeout: 30);
-        StopTimer("SignInToSetupWindow");
-        SignInToSetup.Click();
-        Wait(1);        
-        SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(1);
-        //var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "POWERPNT").Focus();
-        //Wait(1);        
-        //SignInToSetup.Type("{ESC}", cpm:50);
-        //Wait(1);  
-
+            SkipFirstRunDialogs();
+        }
 
         // Open "Open File" window and start measurement.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Open File Window");
@@ -93,6 +78,12 @@ public class M365PowerPoint524 : ScriptBase
         newPowerpoint.Focus();  
         newPowerpoint.FindControl(className : "TabItem:NetUIRibbonTab", title : "Insert");
         StopTimer("Open_Powerpoint_Document");
+
+        if (appWasLeftOpen)
+        {
+            MainWindow.Close();
+            Wait(1);
+        }
 
         //Scroll through Powerpoint presentation
         Wait(seconds:3, showOnScreen:true, onScreenText:"Scroll");
@@ -167,16 +158,17 @@ public class M365PowerPoint524 : ScriptBase
         newPowerpoint.Type("{F12}");
         Wait(1);
 
+        var filename = $"{temp}\\LoginPI\\{newDocName}.pptx";
         // Remove file if it already exists
-        if(FileExists($"{temp}\\LoginPI\\loginvsi_edited.pptx"))
+        if (FileExists(filename))
         {
             Log("Removing file");
-            RemoveFile(path:$"{temp}\\LoginPI\\loginvsi_edited.pptx");
+            RemoveFile(path: filename);
         }
         else
         {
             Log("File already removed");
-        }       
+        }
 
         // Saving the file in temp 
         var SaveAs = get_file_dialog();
@@ -184,10 +176,10 @@ public class M365PowerPoint524 : ScriptBase
         fileNameBox = SaveAs.FindControl(className: "Edit:Edit", title: "File name:");
         fileNameBox.Click();
         Wait(1);
-        ScriptHelpers.SetTextBoxText(this, fileNameBox, $"{temp}\\LoginPI\\loginvsi_edited.pptx", cpm: 300);
+        ScriptHelpers.SetTextBoxText(this, fileNameBox, filename, cpm: 300);
         StartTimer("Saving_file");
         SaveAs.Type("{ENTER}");
-        FindWindow(title: "loginvsi_edited*");
+        FindWindow(title: $"{newDocName}*", processName: "POWERPNT");
         StopTimer("Saving_file");
         Wait(2);
 
@@ -195,6 +187,16 @@ public class M365PowerPoint524 : ScriptBase
         Wait(seconds:3, showOnScreen:true, onScreenText:"Stop App");
         Wait(2);
         STOP();
+    }
+
+    private void SkipFirstRunDialogs()
+    {
+        var dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "POWERPNT", continueOnError: true, timeout: 1);
+        while (dialog != null)
+        {
+            dialog.Close();
+            dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "POWERPNT", continueOnError: true, timeout: 10);
+        }
     }
 
     private IWindow get_file_dialog()

@@ -1,6 +1,4 @@
-// MicrosoftWord script version 20211022
-// By Blair Parkhill
-// 1022 update - added better logic for Sign In to Setup Window and also found issue with typing long sentences, so broke it up
+// MicrosoftWord script version 20210813
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -42,21 +40,18 @@ public class M365Word813 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Starting Word");
         START(mainWindowTitle: "*Word*", mainWindowClass: "Win32 Window:OpusApp", processName: "WINWORD", timeout: 30);
         MainWindow.Maximize();
-        //Wait(30);
+        var newDocName = "edited";
+        var appWasLeftOpen = MainWindow.GetTitle().Contains(newDocName);
+        if (appWasLeftOpen)
+        {
+            Log("Word was left open from previous run");
+        }
+        else
+        {
+            Wait(10);
 
-        // MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10, continueOnError: true)?.Type("{ESC}");
-
-        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
-        // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
-        //var SignInToSetup = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10);
-        StartTimer("SignInToSetupWindow");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "WINWORD", timeout: 30);
-        StopTimer("SignInToSetupWindow");
-        SignInToSetup.Click();
-        Wait(1);        
-        SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(1);
+            SkipFirstRunDialogs();
+        }
         
         //Open "Open File" window and start measurement.
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Open File Window");
@@ -83,6 +78,12 @@ public class M365Word813 : ScriptBase
         //newWord.FindControl(className : "TabItem:NetUIRibbonTab", title : "Insert"); //this failed under load. The change doesn't throw off timing
         StopTimer("Open_Word_Document");
 
+        if (appWasLeftOpen)
+        {
+            MainWindow.Close();
+            Wait(1);
+        }
+
         //Scroll through Word Document
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Scroll");
         newWord.MoveMouseToCenter();
@@ -96,17 +97,11 @@ public class M365Word813 : ScriptBase
         //Type in the document (in the future create a txt file of content and type randomly from it)
         // newWord.Type("{CTRL+END}");
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Type");
-        newWord.Type("The snappy guy, who was a little rough around the edges, blossomed. The old fogey sat down in order to pass the time. ", cpm: 900);
-        newWord.Type("The slippery townspeople had an unshakable fear of ostriches while encountering a whirling dervish. ", cpm: 900);
-        newWord.Type("The prisoner stepped in a puddle while chasing the neighbor's cat out of the yard. The gal thought about mowing the lawn during a pie fight. ", cpm: 900);
-        newWord.Type("A darn good bean-counter had a pen break while chewing on it while placing one ear to the ground. ", cpm: 900);
+        newWord.Type("The snappy guy, who was a little rough around the edges, blossomed. The old fogey sat down in order to pass the time. The slippery townspeople had an unshakable fear of ostriches while encountering a whirling dervish. The prisoner stepped in a puddle while chasing the neighbor's cat out of the yard. The gal thought about mowing the lawn during a pie fight. A darn good bean-counter had a pen break while chewing on it while placing one ear to the ground.", cpm: 600);
         Wait(1);
 
         newWord.Type("{ENTER}");
-        newWord.Type("The intelligent baby felt sick after watching a silent film. As usual, the beekeeper spoke on a cellphone in nothing flat. ", cpm: 900);
-        newWord.Type("A behemoth of a horde of morons committed a small crime and then chuckled arrogantly. The typical girl frequently wore a toga. ", cpm: 900);
-        newWord.Type("The meowing guy, who had a little too much confidence in himself, threw a gutter ball in a rather graceful manner. ", cpm: 900);
-        newWord.Type("The wicked Bridge Club shrugged both shoulders, which was considered a sign of great wisdom. ", cpm: 900);
+        newWord.Type("The intelligent baby felt sick after watching a silent film. As usual, the beekeeper spoke on a cellphone in nothing flat. A behemoth of a horde of morons committed a small crime and then chuckled arrogantly. The typical girl frequently wore a toga. The meowing guy, who had a little too much confidence in himself, threw a gutter ball in a rather graceful manner. The wicked Bridge Club shrugged both shoulders, which was considered a sign of great wisdom.", cpm: 600);
 
         //Copy some text and paste it
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Copy & Paste");
@@ -136,11 +131,12 @@ public class M365Word813 : ScriptBase
         newWord.Type("{F12}", cpm: 0);
         Wait(1);
 
+        var filename = $"{temp}\\LoginPI\\{newDocName}.docx";
         // Remove file if it already exists
-        if (FileExists($"{temp}\\LoginPI\\loginvsi_edited.docx"))
+        if (FileExists(filename))
         {
             Log("Removing file");
-            RemoveFile(path: $"{temp}\\LoginPI\\loginvsi_edited.docx");
+            RemoveFile(path: filename);
         }
         else
         {
@@ -152,10 +148,10 @@ public class M365Word813 : ScriptBase
         fileNameBox = SaveAs.FindControl(className: "Edit:Edit", title: "File name:");
         fileNameBox.Click();
         Wait(1);
-        ScriptHelpers.SetTextBoxText(this, fileNameBox, $"{temp}\\LoginPI\\loginvsi_edited.docx", cpm: 300);
+        ScriptHelpers.SetTextBoxText(this, fileNameBox, filename, cpm: 300);
         StartTimer("Saving_file");
         SaveAs.Type("{ENTER}");
-        FindWindow(title: "loginvsi_edited*");
+        FindWindow(title: $"{newDocName}*", processName: "WINWORD");
         StopTimer("Saving_file");
         Wait(2);
 
@@ -164,6 +160,16 @@ public class M365Word813 : ScriptBase
         Wait(2);
         STOP();
 
+    }
+
+    private void SkipFirstRunDialogs()
+    {
+        var dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 1);
+        while (dialog != null)
+        {
+            dialog.Close();
+            dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 10);
+        }
     }
 
     private IWindow get_file_dialog()
@@ -198,31 +204,31 @@ public class M365Word813 : ScriptBase
 
         return file;
     }
-}
-
-public static class ScriptHelpers
-{
-    ///
-    /// This method types the given text to the textbox (any existing text is cleared)
-    /// After typing, it confirms the resulting value.
-    /// If it does not match, it will clear the textbox and try again
-    ///
-    public static void SetTextBoxText(ScriptBase script, IWindow textBox, string text, int cpm = 800)
+    public static class ScriptHelpers
     {
-        var numTries = 1;
-        string currentText = null;
-        do
+        ///
+        /// This method types the given text to the textbox (any existing text is cleared)
+        /// After typing, it confirms the resulting value.
+        /// If it does not match, it will clear the textbox and try again
+        ///
+        public static void SetTextBoxText(ScriptBase script, IWindow textBox, string text, int cpm = 800)
         {
-            textBox.Type("{CTRL+a}");
-            script.Wait(0.5);
-            textBox.Type(text, cpm: cpm);
-            script.Wait(1);
-            currentText = textBox.GetText();
+            var numTries = 1;
+            string currentText = null;
+            do
+            {
+                textBox.Type("{CTRL+a}");
+                script.Wait(0.5);
+                textBox.Type(text, cpm: cpm);
+                script.Wait(1);
+                currentText = textBox.GetText();
+                if (currentText != text)
+                    script.CreateEvent($"Typing error in attempt {numTries}", $"Expected '{text}', got '{currentText}'");
+            }
+            while (++numTries < 5 && currentText != text);
             if (currentText != text)
-                script.CreateEvent($"Typing error in attempt {numTries}", $"Expected '{text}', got '{currentText}'");
+                script.ABORT($"Unable to set the correct text '{text}', got '{currentText}'");
         }
-        while (++numTries < 5 && currentText != text);
-        if (currentText != text)
-            script.ABORT($"Unable to set the correct text '{text}', got '{currentText}'");
     }
 }
+
