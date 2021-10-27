@@ -102,16 +102,14 @@ public class MicrosoftEdge83 : ScriptBase
         // Navigate back to main homepage and Click on Article
         //MainWindow.FindControl(className : "Button:ToolbarButton", title : "Back").Click();
         // The following works with Edge to go back
-        MainWindow.FindControl(className : "Button:BackForwardButton", title : "Back").Click();
+        Browser.Back();
         Wait(2);
         Browser.FindWebComponentBySelector("a[id='articlepage']").Click();
         Wait(2);
 
         // Scroll through webpage
         Wait(seconds:3, showOnScreen:true, onScreenText:"Browse a Web Page");
-        MainWindow.MoveMouseToCenter();
-        MouseDown();
-        MouseUp();
+        MainWindow.Click();
         MainWindow.Type("{PAGEDOWN}".Repeat(2));
         MainWindow.Type("{PAGEUP}".Repeat(2));
 
