@@ -1,4 +1,5 @@
-// MicrosoftEdge Script Version 20210928
+// MicrosoftEdge Script Version 20211027
+// Better handling of login through video page
 
 
 using LoginPI.Engine.ScriptBase;
@@ -50,12 +51,12 @@ public class MicrosoftEdge83 : ScriptBase
         // Start Browser
         Wait(seconds:3, showOnScreen:true, onScreenText:"Start Edge");
         StartBrowser();
-        MainWindow.Maximize();
+        var EdgeBrowser = FindWindow(className : "Win32 Window:Chrome_WidgetWin_1", title : "*Microsoft​ Edge", processName : "msedge");
+        EdgeBrowser.Focus();
+        EdgeBrowser.Maximize();
         MouseDown();
         MouseUp();
-        Wait(5);
         MainWindow.Type("{PAGEDOWN}".Repeat(2));
-        Wait(2);
         MainWindow.Type("{PAGEUP}".Repeat(1));
         Wait(PageBrowseTime);
 /*        
@@ -73,24 +74,35 @@ public class MicrosoftEdge83 : ScriptBase
         // Click on the login button
         // Browser.FindWebComponentBySelector("button[id='logonbutton']").Click();
         Wait(seconds:3, showOnScreen:true, onScreenText:"Click Logon Button");
-        //FindWebComponentBySelector("button[id='logonbutton']").Click();
-        Type("{TAB}");
+        var LoginBtn=MainWindow.FindControl(className : "Button", title : "Login");
+        LoginBtn.Click();
         Wait(1);
-        Type("{SPACE}");
-        Wait(3);
+        //Type("{TAB}");
+        //Wait(1);
+        //Type("{SPACE}");
+        //Wait(3);
 
         // Enter login credentials
-        Browser.FindWebComponentBySelector("input[id='username']").Click();
-        Type("Admin");
-        Browser.FindWebComponentBySelector("input[id='password']").Click();
-        Type("Admin");
-        Browser.FindWebComponentBySelector("button[id='submit']").Click();
+        var UsernameField=MainWindow.FindControl(className : "Edit", title : "Enter Username");
+        UsernameField.Click();
+        UsernameField.Type("Admin");
+        Wait(1);
+        var PasswordField=MainWindow.FindControl(className : "Edit", title : "Enter Password");
+        PasswordField.Click();
+        PasswordField.Type("Admin");
+        //Browser.FindWebComponentBySelector("input[id='username']").Click();
+        //Type("Admin");
+        //Browser.FindWebComponentBySelector("input[id='password']").Click();
+        //Type("Admin");
+        var LogonBtn=MainWindow.FindControl(className : "Button", title : "Logon");
+        LogonBtn.Click();
+        //Browser.FindWebComponentBySelector("button[id='submit']").Click();
         
         // Time the logon
         StartTimer("Logon");
         Browser.FindWebComponentBySelector("a[id='videopage']", timeout: 30, continueOnError: false);
         StopTimer("Logon");
-        Wait(2);
+        Wait(1);
 
         // Select the videopage tab
         Wait(3, showOnScreen: true, onScreenText: $"Watch Platte River for {VideoDuration} seconds");
@@ -102,14 +114,16 @@ public class MicrosoftEdge83 : ScriptBase
         // Navigate back to main homepage and Click on Article
         //MainWindow.FindControl(className : "Button:ToolbarButton", title : "Back").Click();
         // The following works with Edge to go back
-        Browser.Back();
+        MainWindow.FindControl(className : "Button:BackForwardButton", title : "Back").Click();
         Wait(2);
         Browser.FindWebComponentBySelector("a[id='articlepage']").Click();
         Wait(2);
 
         // Scroll through webpage
         Wait(seconds:3, showOnScreen:true, onScreenText:"Browse a Web Page");
-        MainWindow.Click();
+        MainWindow.MoveMouseToCenter();
+        MouseDown();
+        MouseUp();
         MainWindow.Type("{PAGEDOWN}".Repeat(2));
         MainWindow.Type("{PAGEUP}".Repeat(2));
 

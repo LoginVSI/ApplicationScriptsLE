@@ -1,4 +1,7 @@
-// MicrosoftWord script version 20210813
+// MicrosoftWord script version 20211103
+// By Blair P. and Henri H. 
+// 1103 update - using Henri's functions
+// 1105 update - enhanced file open logic resiliency (keep apps running also)
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -48,18 +51,24 @@ public class M365Word813 : ScriptBase
         }
         else
         {
-            Wait(10);
+            Wait(20);
 
             SkipFirstRunDialogs();
         }
         
         //Open "Open File" window and start measurement.
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Open File Window");
-        MainWindow.Type("{CTRL+O}");
-        MainWindow.Type("{ALT+O+O}");
+        var WordWindow = FindWindow(className : "Win32 Window:OpusApp", title : "*Word", processName : "WINWORD");
+        WordWindow.Focus();
+        WordWindow.Type("{ALT+F}");
+        //WordWindow.Type("{CTRL+O}");
+        WordWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open").Click();
+        //WordWindow.Type("{ALT+O+O}");
+        Wait(1);
+        var WordBrowse = WordWindow.FindControl(className : "Button:NetUISimpleButton", title : "Browse");
+        WordBrowse.Click();
         StartTimer("Open_Window");
         var OpenWindow = get_file_dialog();
-
         // OpenWindow.FindControl(className : "SplitButton:Button", title : "&Open").Click();
         StopTimer("Open_Window");
         OpenWindow.Click();

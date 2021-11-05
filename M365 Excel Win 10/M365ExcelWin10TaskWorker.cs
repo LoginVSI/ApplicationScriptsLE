@@ -1,7 +1,7 @@
 // MicrosoftExcel script version 20211103
 // By Blair P. and Henri K.
 // 1103 update - Henri's functions and keep app running support, Blair removes "MainWindows"
-// 1105 update - enhanced file open logic resiliency (keep apps running also)
+// added more wait for TaskWorker to look at the chart and when scrolling
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -57,6 +57,8 @@ public class M365Excel524 : ScriptBase
         DoCopyPaste();
         
         CreateChart();
+
+        Wait(seconds: 60, showOnScreen: true, onScreenText: "Looking at the chart for a bit");
         
         SaveAs();
         
@@ -162,16 +164,16 @@ public class M365Excel524 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Scroll");
         _activeDocument.MoveMouseToCenter();
         MouseDown();
-        Wait(1);
+        Wait(5);
         MouseUp();
         _activeDocument.Type("{PAGEDOWN}".Repeat(6), cpm: 200);
-        Wait(1);
+        Wait(5);
         _activeDocument.Type("{PAGEUP}".Repeat(5), cpm: 200);
-        Wait(3);
+        Wait(5);
         _activeDocument.Type("{PAGEDOWN}".Repeat(5), cpm: 200);
-        Wait(1);
+        Wait(5);
         _activeDocument.Type("{PAGEUP}".Repeat(6), cpm: 200);
-        Wait(2);
+        Wait(5);
     }
     
     IWindow OpenLoginVsiDoc()
@@ -195,13 +197,8 @@ public class M365Excel524 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Open File Window");
         var ExcelWindow = FindWindow(className : "Win32 Window:XLMAIN", title : "*Excel", processName : "EXCEL");
         ExcelWindow.Focus();
-        ExcelWindow.Type("{ALT+F}");
-        //ExcelWindow.Type("{CTRL+O}");
-        ExcelWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open").Click();
-        //ExcelWindow.Type("{ALT+O+O}", cpm: 300);
-        Wait(1);
-        var ExcelBrowse = ExcelWindow.FindControl(className : "Button:NetUISimpleButton", title : "Browse");
-        ExcelBrowse.Click();
+        ExcelWindow.Type("{CTRL+O}");
+        ExcelWindow.Type("{ALT+O+O}", cpm: 300);
         StartTimer("Open_Window");
         var OpenWindow = GetFileDialog();
         StopTimer("Open_Window");
@@ -287,5 +284,3 @@ public class M365Excel524 : ScriptBase
     }
 
 }
-
-

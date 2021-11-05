@@ -1,4 +1,8 @@
-// MicrosoftPowerpoint script version 20210813
+// MicrosoftPowerpoint script version 20211103
+// By Blair P. and Henri K.
+// 1103 update - Henri functions and keep app running
+// *PowerPoint when edited - PowerPoint in doc title
+// 1105 update - enhanced file open logic resiliency (keep apps running also)
 
 using LoginPI.Engine.ScriptBase;
 using LoginPI.Engine.ScriptBase.Components;
@@ -45,22 +49,28 @@ public class M365PowerPoint524 : ScriptBase
         var appWasLeftOpen = MainWindow.GetTitle().Contains(newDocName);
         if (appWasLeftOpen)
         {
-            Log("Word was left open from previous run");
+            Log("PPT was left open from previous run");
         }
         else
         {
-            Wait(10);
+            Wait(20);
 
             SkipFirstRunDialogs();
         }
 
         // Open "Open File" window and start measurement.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Open File Window");
-        MainWindow.Type("{CTRL+O}");
-        MainWindow.Type("{ALT+O+O}");
+        var PPTWindow = FindWindow(className : "Win32 Window:PPTFrameClass", title : "*PowerPoint", processName : "POWERPNT");
+        PPTWindow.Focus();
+        PPTWindow.Type("{ALT+F}");
+        //PPTWindow.Type("{CTRL+O}");
+        PPTWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open").Click();
+        //PPTWindow.Type("{ALT+O+O}");
+        Wait(1);
+        var PPTBrowse = PPTWindow.FindControl(className : "Button:NetUISimpleButton", title : "Browse");
+        PPTBrowse.Click();
         StartTimer("Open_Window");
         var OpenWindow = get_file_dialog();
-
         StopTimer("Open_Window");
         Wait(1);
         OpenWindow.Click();

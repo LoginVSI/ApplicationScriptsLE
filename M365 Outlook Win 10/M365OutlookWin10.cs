@@ -2,6 +2,7 @@
 // App Execution should be set to outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
 // By Blair Parkhill - coauthor: Henri K.
 // 1022 Update - Better logic for Sign In to Setup
+// increased timeout for SITSO
 
 using LoginPI.Engine.ScriptBase;
 using System.IO;
@@ -45,30 +46,34 @@ public class M365Outlook524 : ScriptBase
         // Start Application
         //Log("Starting Outlook");
         Wait(seconds:3, showOnScreen:true, onScreenText:"Starting Outlook");
-        START(mainWindowTitle:"Inbox*", mainWindowClass:"Win32 Window:rctrl_renwnd32", processName:"OUTLOOK", timeout:30, continueOnError:true);
-        MainWindow.Maximize();
+        START(mainWindowTitle:"*Outlook*", mainWindowClass:"*renwnd32*", processName:"OUTLOOK", timeout:60, continueOnError:false);
+        var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Inbox*", processName : "OUTLOOK");
+        OutlookWindow.Maximize();
         //Wait(15);
 
         //BEGIN TRIAL LICENSE POPUP AUTOMATION ############################### If you are using M365 Enterprise LIcensing you can comment this section out
 
-        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
-        // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Getting Rid of Sign In Window with ESC");
+        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC
         StartTimer("SignInToSetupWindow");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK", timeout: 30);
-        StopTimer("SignInToSetupWindow");
-        SignInToSetup.Click();
-        Wait(1);        
-        SignInToSetup.Type("{ESC}", cpm:50);
-        Wait(1);
+        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK");
+        SignInToSetup.FindControl(className : "Button:NetUISimpleButton", title : "Sign in", timeout: 60, continueOnError:false);
+        StopTimer("SignInToSetupWindow"); 
+        if (SignInToSetup != null) {
+            Wait(5);
+            SignInToSetup.Focus();
+            SignInToSetup.Click();
+            SignInToSetup.Type("{ESC}", cpm:50);
+            Wait(1);
+            }
+        Wait(seconds:3, showOnScreen:true, onScreenText:"Just dismissed Sign In Window with ESC");
 
         // If the "Your privacy option" Window Shows, click the "Close" button, otherwise just proceed.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Getting rid of privacy notice");
         var MainWindowprivacyoption = FindWindow(className : "Win32 Window:NUIDialog", title : "Your privacy matters", processName : "OUTLOOK",timeout:10,continueOnError:true);
         if (MainWindowprivacyoption != null) {
-        Wait(1);
-        MainWindowprivacyoption.FindControl(className : "Button:NetUIButton", title : "Close").Click();
-        }
+            Wait(1);
+            MainWindowprivacyoption.FindControl(className : "Button:NetUIButton", title : "Close").Click();
+            }
         
         //END TRIAL LICENSE POPUP AUTOMATION ###############################
 
@@ -109,7 +114,7 @@ public class M365Outlook524 : ScriptBase
         InboxWindow.Type("{DOWN}");
         InboxWindow.Type("{ENTER}");
         Wait(RandomNumber);
-        var OpenEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Login Enterprise Continuity & Application Load Testing - Message (HTML) ", processName : "OUTLOOK");
+        var OpenEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Login Enterprise*", processName : "OUTLOOK");
         OpenEmail.Focus();
         OpenEmail.Type("{DOWN}".Repeat(RandomNumber),cpm:500);
         Wait(RandomNumber);
@@ -120,9 +125,7 @@ public class M365Outlook524 : ScriptBase
 
         //Compose a new email with words from Vonnegut's 2-B-R-0-2-B
         Wait(seconds:3, showOnScreen:true, onScreenText:"Compose a new email with words from Vonnegut's 2-B-R-0-2-B");
-        //MainWindow.FindControlWithXPath(xPath : "Pane:MsoCommandBarDock/ToolBar:MsoCommandBar/Pane:MsoWorkPane/Pane:NUIPane/Pane:NetUIHWNDElement/Pane:NetUInetpane/Pane:NetUIPanViewer/Custom:NetUIOrderedGroup/Group:NetUIChunk/SplitButton:NetUISplitButtonAnchor/Button:NetUIRibbonButton").Click();
-        //MainWindow.FindControl(className : "Button:NetUIRibbonButton", title : "New Email").Click();
-        MainWindow.Type("{CTRL+N}");
+        OutlookWindow.Type("{CTRL+N}");
         Wait(RandomNumber);
         var NewEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Untitled - Message (HTML) ", processName : "OUTLOOK").Focus();
         NewEmail.FindControl(className : "Edit:RichEdit20WPT", title : "To").Type("marx@loginvsi.com; mank@loginvsi.com; blain@loginvsi.com", cpm:500);
@@ -151,29 +154,30 @@ public class M365Outlook524 : ScriptBase
  
         // Navigate to Calender and open appt
         Wait(seconds:3, showOnScreen:true, onScreenText:"Calendar and Open Appt");
-        MainWindow.FindControlWithXPath(xPath : "Group:Navigation Bar/Button:Navigation Module[1]").Click();
+        //var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "*Outlook", processName : "OUTLOOK");
+        OutlookWindow.FindControlWithXPath(xPath : "Group:Navigation Bar/Button:Navigation Module[1]").Click();
         Wait(RandomNumber);
-        MainWindow.Type("{TAB}",cpm:50);
+        OutlookWindow.Type("{TAB}",cpm:50);
         Wait(1);
-        MainWindow.Type("{ENTER}",cpm:50);
+        OutlookWindow.Type("{ENTER}",cpm:50);
         Wait(1);
-        MainWindow.Type("{ENTER}",cpm:50);
+        OutlookWindow.Type("{ENTER}",cpm:50);
         Wait(RandomNumber);
-        MainWindow.Type("{ESC}",cpm:50);
+        OutlookWindow.Type("{ESC}",cpm:50);
         Wait(2);
 
         // Navigate to Contacts and open a contact
         Wait(seconds:3, showOnScreen:true, onScreenText:"Contacts and Open Contact");
-        MainWindow.FindControl(className : "Button:Navigation Module", title : "People").Click();
+        OutlookWindow.FindControl(className : "Button:Navigation Module", title : "People").Click();
         Wait(RandomNumber);
-        MainWindow.Type("{DOWN}");
-        MainWindow.Type("{ENTER}");
+        OutlookWindow.Type("{DOWN}");
+        OutlookWindow.Type("{ENTER}");
         Wait(RandomNumber);
-        MainWindow.Type("{ESC}");
+        OutlookWindow.Type("{ESC}");
 
         // Navigate to Tasks
         Wait(seconds:3, showOnScreen:true, onScreenText:"Tasks");
-        MainWindow.Type("{CTRL+4}");
+        OutlookWindow.Type("{CTRL+4}");
         Wait(RandomNumber);
 
         Wait(seconds:3, showOnScreen:true, onScreenText:"Stop App");
