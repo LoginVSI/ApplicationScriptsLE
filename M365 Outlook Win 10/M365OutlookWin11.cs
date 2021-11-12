@@ -60,9 +60,9 @@ public class M365Outlook524 : ScriptBase
         StopTimer("SignInToSetupWindow"); 
         if (SignInToSetup != null) {
             Wait(5);
-            SignInToSetup.Focus();
+            SignInToSetup.FindControl(className : "Custom:NetUINetUIDialog", title : "Sign in to set up Office").Click();
             //SignInToSetup.Click(); //this may be clicking on a link??
-            SignInToSetup.Type("{ESC}", cpm:50);
+            SignInToSetup.FindControl(className : "Custom:NetUINetUIDialog", title : "Sign in to set up Office").Type("{ESC}", cpm:50);
             Wait(1);
             }
         Wait(seconds:3, showOnScreen:true, onScreenText:"Just dismissed Sign In Window with ESC");

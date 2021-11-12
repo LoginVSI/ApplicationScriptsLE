@@ -195,6 +195,8 @@ public class M365Excel524 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Open File Window");
         var ExcelWindow = FindWindow(className : "Win32 Window:XLMAIN", title : "*Excel", processName : "EXCEL");
         ExcelWindow.Focus();
+        Wait(1);
+        ExcelWindow.Click();
         ExcelWindow.Type("{ALT+F}");
         //ExcelWindow.Type("{CTRL+O}");
         ExcelWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open", timeout : 15).Click();

@@ -60,6 +60,8 @@ public class M365Word813 : ScriptBase
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Open File Window");
         var WordWindow = FindWindow(className : "Win32 Window:OpusApp", title : "*Word", processName : "WINWORD");
         WordWindow.Focus();
+        Wait(1);
+        WordWindow.Click();
         WordWindow.Type("{ALT+F}");
         //WordWindow.Type("{CTRL+O}");
         WordWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open").Click();

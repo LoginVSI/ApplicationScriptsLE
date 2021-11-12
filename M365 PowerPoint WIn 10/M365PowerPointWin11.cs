@@ -62,6 +62,8 @@ public class M365PowerPoint524 : ScriptBase
         Wait(seconds:3, showOnScreen:true, onScreenText:"Open File Window");
         var PPTWindow = FindWindow(className : "Win32 Window:PPTFrameClass", title : "*PowerPoint", processName : "POWERPNT");
         PPTWindow.Focus();
+        Wait(1);
+        PPTWindow.Click();
         PPTWindow.Type("{ALT+F}");
         //PPTWindow.Type("{CTRL+O}");
         PPTWindow.FindControl(className : "ListItem:NetUIRibbonTab", title : "Open", timeout : 15).Click();

@@ -103,6 +103,7 @@ public class Teams : ScriptBase
         Wait(3, showOnScreen: true, onScreenText: "Leaving the meeting if it's still connected");
         try{
         var TeamsWindow2 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
+        TeamsWindow2.Focus();
         var callInProgressList = TeamsWindow2.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[2]/Group"); //The next 4 lines help with the changing message list
         var hangUpAgain = callInProgressList.FindControl(title: "Hang up*", searchRecursively:false);
         var hangUpAgainBtn = hangUpAgain.FindControlWithXPath(xPath : "Pane");
@@ -116,10 +117,10 @@ public class Teams : ScriptBase
         
         // Chat test function.  Try/Catch is in place as some items names are not consistent
         var TeamsWindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams"); 
-        TeamsWindow.Focus();
         Wait(3, showOnScreen: true, onScreenText: "Let's Chat");
+        TeamsWindow.Focus();
         try { chatBtn = TeamsWindow.FindControl(className: "Button", title: "Chat Toolbar more options", timeout: 30); }
-        catch { chatBtn = TeamsWindow.FindControl(className: "Button", title: "*chat*with new message*", timeout: 1); }
+        catch { chatBtn = TeamsWindow.FindControl(className: "Button", title: "*chat*with new message*", timeout: 15); }
         finally { chatBtn.MoveMouseToCenter(); chatBtn.Click(); } 
         Wait(5, showOnScreen: true, onScreenText: $"Let's chat with random user {chatRecipient}");
         try {TeamsWindow.FindControl(className : "Edit", title : "*Search*",timeout: 10).Click(); }
