@@ -16,26 +16,17 @@ public class M365Outlook524 : ScriptBase
     
         // Define environementvariables to use with Workload
         var temp = GetEnvironmentVariable("TEMP");
-
-        // Define random integer
-        var rand = new Random();
-        var RandomNumber = rand.Next(2,9);
-
-        // Download the PRF and PST file from the appliance through the KnownFiles method, if it already exists: Skip Download.
+        
+        // Download the PRF and PST file from the appliance through the KnownFiles method
+        // Outlook is known to sometimes corrupt the pst file, so we  
+        // will always start from a clean file by overwriting it
         Wait(seconds:3, showOnScreen:true, onScreenText:"Get PRF & PST");
-        if(!(FileExists($"{temp}\\LoginPI\\Outlook.prf")))
-        {
-            Log("Downloading File");
-            CopyFile(KnownFiles.OutlookConfiguration, $"{temp}\\LoginPI\\Outlook.prf");
-            CopyFile(KnownFiles.OutlookData, $"{temp}\\LoginPI\\Outlook.pst");
+        Log("Downloading File");
+        CopyFile(KnownFiles.OutlookConfiguration, $"{temp}\\LoginPI\\Outlook.prf",  overwrite:true, continueOnError:true);
+        CopyFile(KnownFiles.OutlookData, $"{temp}\\LoginPI\\Outlook.pst",  overwrite:true, continueOnError:true);
             
-            // Looks for the %TEMP% string in the prf file and replaces it with the {temp} variable.
-            File.WriteAllText($"{temp}\\LoginPI\\Outlook.prf", File.ReadAllText($"{temp}\\LoginPI\\Outlook.prf").Replace("%TEMP%", $"{temp}"));
-        }
-        else
-        {
-            Log("File already exists");
-        }
+        // Looks for the %TEMP% string in the prf file and replaces it with the {temp} variable.
+        File.WriteAllText($"{temp}\\LoginPI\\Outlook.prf", File.ReadAllText($"{temp}\\LoginPI\\Outlook.prf").Replace("%TEMP%", $"{temp}"));
             
         // Click the Start Menu
         Wait(seconds:3, showOnScreen:true, onScreenText:"Start Menu");
@@ -49,33 +40,10 @@ public class M365Outlook524 : ScriptBase
         START(mainWindowTitle:"*Outlook*", mainWindowClass:"*renwnd32*", processName:"OUTLOOK", timeout:60, continueOnError:false);
         var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Inbox*", processName : "OUTLOOK");
         OutlookWindow.Maximize();
-        //Wait(15);
 
-        //BEGIN TRIAL LICENSE POPUP AUTOMATION ############################### If you are using M365 Enterprise LIcensing you can comment this section out
-
-        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC
-        StartTimer("SignInToSetupWindow");
-        var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK");
-        SignInToSetup.FindControl(className : "Button:NetUISimpleButton", title : "Sign in", timeout: 60, continueOnError:false);
-        StopTimer("SignInToSetupWindow"); 
-        if (SignInToSetup != null) {
-            Wait(5);
-            SignInToSetup.Focus();
-            //SignInToSetup.Click(); //this may be clicking on a link??
-            SignInToSetup.Type("{ESC}", cpm:50);
-            Wait(1);
-            }
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Just dismissed Sign In Window with ESC");
-
-        // If the "Your privacy option" Window Shows, click the "Close" button, otherwise just proceed.
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Getting rid of privacy notice");
-        var MainWindowprivacyoption = FindWindow(className : "Win32 Window:NUIDialog", title : "Your privacy matters", processName : "OUTLOOK",timeout:10,continueOnError:true);
-        if (MainWindowprivacyoption != null) {
-            Wait(1);
-            MainWindowprivacyoption.FindControl(className : "Button:NetUIButton", title : "Close").Click();
-            }
-        
-        //END TRIAL LICENSE POPUP AUTOMATION ###############################
+        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
+        // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
+        SkipFirstRunDialogs();
 
         // Select an item in the Inbox
         Wait(seconds:3, showOnScreen:true, onScreenText:"Select An Item");
@@ -86,12 +54,12 @@ public class M365Outlook524 : ScriptBase
 
         // Scroll through E-mail inbox
         Wait(seconds:3, showOnScreen:true, onScreenText:"Scroll Inbox");
-        InboxWindow.Type("{DOWN}".Repeat(RandomNumber),cpm:50);
+        InboxWindow.Type("{DOWN}".Repeat(3),cpm:80);
         Wait(3);
         
-            //Dismiss all reminders
+        //Dismiss all reminders
         Wait(seconds:3, showOnScreen:true, onScreenText:"Dismiss Reminders");
-        var ReminderWindow=FindWindow(className : "Win32 Window:#32770", title : "*Reminder(s)", processName : "OUTLOOK", timeout:10, continueOnError:true);
+        var ReminderWindow=FindWindow(className : "Win32 Window:#32770", title : "*Reminder(s)", processName : "OUTLOOK", timeout:3, continueOnError:true);
         if (ReminderWindow != null) {
              Wait(1);
                 ReminderWindow.Focus();
@@ -101,10 +69,10 @@ public class M365Outlook524 : ScriptBase
         }
         Wait(1);
 
-            //Keep Scrolling
+        //Keep Scrolling
         Wait(seconds:3, showOnScreen:true, onScreenText:"Keep Scrolling");
-        InboxWindow.Type("{DOWN}".Repeat(RandomNumber),cpm:50);
-        InboxWindow.Type("{UP}".Repeat(4),cpm:50);
+        InboxWindow.Type("{DOWN}".Repeat(4),cpm:80);
+        InboxWindow.Type("{UP}".Repeat(8),cpm:80);
         Wait(2);
         
         //Open an email read it and close it
@@ -113,77 +81,65 @@ public class M365Outlook524 : ScriptBase
         InboxWindow.Click();
         InboxWindow.Type("{DOWN}");
         InboxWindow.Type("{ENTER}");
-        Wait(RandomNumber);
+        Wait(2);
         var OpenEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Login Enterprise*", processName : "OUTLOOK");
         OpenEmail.Focus();
-        OpenEmail.Type("{DOWN}".Repeat(RandomNumber),cpm:500);
-        Wait(RandomNumber);
-        OpenEmail.Type("{UP}".Repeat(RandomNumber),cpm:500);
-        Wait(RandomNumber);
+        OpenEmail.Type("{DOWN}".Repeat(5),cpm:500);
+        Wait(3);
+        OpenEmail.Type("{UP}".Repeat(3),cpm:500);
+        Wait(3);
         OpenEmail.Type("{ESC}",cpm:50);
-        Wait(RandomNumber);
+        Wait(2);
 
         //Compose a new email with words from Vonnegut's 2-B-R-0-2-B
         Wait(seconds:3, showOnScreen:true, onScreenText:"Compose a new email with words from Vonnegut's 2-B-R-0-2-B");
         OutlookWindow.Type("{CTRL+N}");
-        Wait(RandomNumber);
+        Wait(3);
+        var typingSpeed=900;
         var NewEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Untitled - Message (HTML) ", processName : "OUTLOOK").Focus();
-        NewEmail.FindControl(className : "Edit:RichEdit20WPT", title : "To").Type("marx@loginvsi.com; mank@loginvsi.com; blain@loginvsi.com", cpm:500);
-        NewEmail.Type("{TAB}".Repeat(3));
-        NewEmail.Type("Today's Topics - Words from Vonnegut's 2-B-R-0-2-B", cpm:500);
+        NewEmail.FindControl(className : "*RichEdit20WPT", title : "To").Type("marx@loginvsi.com; mank@loginvsi.com; blain@loginvsi.com", cpm:typingSpeed);
+        NewEmail.Type("{TAB}".Repeat(3), 50);
+        NewEmail.Type("Today's Topics - Words from Vonnegut's 2-B-R-0-2-B", cpm:typingSpeed);
         NewEmail.Type("{TAB}",cpm:50);
+        NewEmail.Type("{ENTER}",cpm:50);
         NewEmail.Type("{CTRL+B}",cpm:50);
-        NewEmail.Type("Young Wehling was hunched in his chair, his head in his hand. He was so rumpled, so still and colorless as to be virtually invisible. {ENTER}His camouflage was perfect, since the waiting room had a disorderly and demoralized air, too. {ENTER}Chairs and ashtrays had been moved away from the walls.", cpm:600);
-        NewEmail.Type("{ENTER}".Repeat(2),cpm:50);
-        Wait(seconds:10, showOnScreen:true, onScreenText:"Standing up and moving around");
-        NewEmail.Type("Never, never, never—not even in medieval Holland nor old Japan—had a garden been more formal, been better tended. {ENTER}Every plant had all the loam, light, water, air and nourishment it could use.", cpm:600); 
-        NewEmail.Type("{ENTER}".Repeat(2),cpm:50);
-        NewEmail.Type("A hospital orderly came down the corridor, singing under his breath a popular song: {CTRL+B}{ENTER}{ENTER}If you don't like my kisses, honey, {ENTER}Here's what I will do: {ENTER}{ENTER}I'll go see a girl in purple, {ENTER}Kiss this sad world toodle-oo. {ENTER}{ENTER}If you don't want my lovin', {ENTER}Why should I take up all this space? {ENTER}{ENTER}I'll get off this old planet, {ENTER}Let some sweet baby have my place.", cpm:600); 
-        NewEmail.Type("{ENTER}".Repeat(2),cpm:50);
-        NewEmail.Type("{CTRL+B}The orderly looked in  at the mural and the muralist. {ENTER}'Looks so real,' he said, 'I can practically imagine I'm standing in the middle of it.' {ENTER}'What makes you think you're not in it?' said the painter. He gave a  atiric smile. {ENTER}'It's called 'The Happy Garden of Life,' you know.' {ENTER}'That's good of Dr. Hitz,' {ENTER}said the orderly.", cpm:600); 
+        NewEmail.Type("Young Wehling was hunched in his chair, his head in his hand. He was so rumpled, so still and colorless as to be virtually invisible.{ENTER}", cpm:typingSpeed);
+        NewEmail.Type("His camouflage was perfect, since the waiting room had a disorderly and demoralized air, too. {ENTER}Chairs and ashtrays had been moved away from the walls.", cpm:typingSpeed);
+        NewEmail.Type("Chairs and ashtrays had been moved away from the walls.", cpm:typingSpeed);
+        NewEmail.Type("Sincerely sincere,",cpm : typingSpeed);
         NewEmail.Type("{ENTER}",cpm:50);
-        NewEmail.Type("{ENTER}",cpm:50);
-        NewEmail.Type("Sincerely sincere,",cpm : 600);
-        NewEmail.Type("{ENTER}",cpm:50);
-        NewEmail.Type("{CTRL+B}Mr. KURT VONNEGUT, JR.",cpm : 600);
+        NewEmail.Type("{CTRL+B}Mr. KURT VONNEGUT, JR.",cpm : typingSpeed);
         Wait(2);
         NewEmail.Type("{ESC}",cpm:50);
         Wait(2);
         NewEmail.Type("{ENTER}",cpm:50);
-        Wait(RandomNumber);
+        Wait(3);
  
         // Navigate to Calender and open appt
         Wait(seconds:3, showOnScreen:true, onScreenText:"Calendar and Open Appt");
         //var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "*Outlook", processName : "OUTLOOK");
         OutlookWindow.FindControlWithXPath(xPath : "Group:Navigation Bar/Button:Navigation Module[1]").Click();
-        Wait(RandomNumber);
+        Wait(2);
         OutlookWindow.Type("{TAB}",cpm:50);
-        Wait(1);
-        OutlookWindow.Type("{ENTER}",cpm:50);
-        Wait(1);
-        OutlookWindow.Type("{ENTER}",cpm:50);
-        Wait(RandomNumber);
-        OutlookWindow.Type("{ESC}",cpm:50);
         Wait(2);
 
-        // Navigate to Contacts and open a contact
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Contacts and Open Contact");
-        OutlookWindow.FindControl(className : "Button:Navigation Module", title : "People").Click();
-        Wait(RandomNumber);
-        OutlookWindow.Type("{DOWN}");
-        OutlookWindow.Type("{ENTER}");
-        Wait(RandomNumber);
-        OutlookWindow.Type("{ESC}");
-
-        // Navigate to Tasks
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Tasks");
-        OutlookWindow.Type("{CTRL+4}");
-        Wait(RandomNumber);
-
-        Wait(seconds:3, showOnScreen:true, onScreenText:"Stop App");
+        MainWindow.FindControl(className : "Button:Navigation Module", title : "Mail").Click();        
+        Wait(1);
+        
         STOP();
 
     }
+
+    private void SkipFirstRunDialogs()
+    {
+        var dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 1);
+        while (dialog != null)
+        {
+            dialog.Close();
+            dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 10);
+        }
+    }
+
     private string create_regfile(string key, string value, string data)
     {            
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
