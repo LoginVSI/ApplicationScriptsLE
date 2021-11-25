@@ -3,6 +3,7 @@
 // By Blair Parkhill - coauthor: Henri K.
 // 1022 Update - Better logic for Sign In to Setup
 // increased timeout for SITSO
+// 1025 Fixed SkipFirstDialog method
 
 using LoginPI.Engine.ScriptBase;
 using System.IO;
@@ -33,16 +34,13 @@ public class M365Outlook524 : ScriptBase
         Type("{LWIN}");
         Wait(3);        
         Type("{ESC}");
-
+        Log(CommandLine);
         // Start Application
         //Log("Starting Outlook");
         Wait(seconds:3, showOnScreen:true, onScreenText:"Starting Outlook");
-        START(mainWindowTitle:"*Outlook*", mainWindowClass:"*renwnd32*", processName:"OUTLOOK", timeout:60, continueOnError:false);
-        var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Inbox*", processName : "OUTLOOK");
-        OutlookWindow.Maximize();
+        START(mainWindowTitle:"Inbox*", mainWindowClass:"Win32 Window:rctrl_renwnd32", processName:"OUTLOOK", timeout:30, continueOnError:true);
+        MainWindow.Maximize();
 
-        // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC -- do we need a try/catch here?
-        // try {var signinWindow = MainWindow.FindControlWithXPath(xPath : "Win32 Window:NUIDialog", timeout:10); signinWindow.Type("{ESC}",cpm:50);} catch {}
         SkipFirstRunDialogs();
 
         // Select an item in the Inbox
@@ -82,7 +80,7 @@ public class M365Outlook524 : ScriptBase
         InboxWindow.Type("{DOWN}");
         InboxWindow.Type("{ENTER}");
         Wait(2);
-        var OpenEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Login Enterprise*", processName : "OUTLOOK");
+        var OpenEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Login Enterprise Continuity & Application Load Testing - Message (HTML) ", processName : "OUTLOOK");
         OpenEmail.Focus();
         OpenEmail.Type("{DOWN}".Repeat(5),cpm:500);
         Wait(3);
@@ -93,7 +91,9 @@ public class M365Outlook524 : ScriptBase
 
         //Compose a new email with words from Vonnegut's 2-B-R-0-2-B
         Wait(seconds:3, showOnScreen:true, onScreenText:"Compose a new email with words from Vonnegut's 2-B-R-0-2-B");
-        OutlookWindow.Type("{CTRL+N}");
+        //MainWindow.FindControlWithXPath(xPath : "Pane:MsoCommandBarDock/ToolBar:MsoCommandBar/Pane:MsoWorkPane/Pane:NUIPane/Pane:NetUIHWNDElement/Pane:NetUInetpane/Pane:NetUIPanViewer/Custom:NetUIOrderedGroup/Group:NetUIChunk/SplitButton:NetUISplitButtonAnchor/Button:NetUIRibbonButton").Click();
+        //MainWindow.FindControl(className : "Button:NetUIRibbonButton", title : "New Email").Click();
+        MainWindow.Type("{CTRL+N}");
         Wait(3);
         var typingSpeed=900;
         var NewEmail=FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "Untitled - Message (HTML) ", processName : "OUTLOOK").Focus();
@@ -117,10 +117,9 @@ public class M365Outlook524 : ScriptBase
  
         // Navigate to Calender and open appt
         Wait(seconds:3, showOnScreen:true, onScreenText:"Calendar and Open Appt");
-        //var OutlookWindow = FindWindow(className : "Win32 Window:rctrl_renwnd32", title : "*Outlook", processName : "OUTLOOK");
-        OutlookWindow.FindControlWithXPath(xPath : "Group:Navigation Bar/Button:Navigation Module[1]").Click();
+        MainWindow.FindControlWithXPath(xPath : "Group:Navigation Bar/Button:Navigation Module[1]").Click();
         Wait(2);
-        OutlookWindow.Type("{TAB}",cpm:50);
+        MainWindow.Type("{TAB}",cpm:50);
         Wait(2);
 
         MainWindow.FindControl(className : "Button:Navigation Module", title : "Mail").Click();        
@@ -132,11 +131,11 @@ public class M365Outlook524 : ScriptBase
 
     private void SkipFirstRunDialogs()
     {
-        var dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 1);
+        var dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "OUTLOOK", continueOnError: true, timeout: 1);
         while (dialog != null)
         {
             dialog.Close();
-            dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "WINWORD", continueOnError: true, timeout: 10);
+            dialog = FindWindow(className: "Win32 Window:NUIDialog", processName: "OUTLOOK", continueOnError: true, timeout: 10);
         }
     }
 
