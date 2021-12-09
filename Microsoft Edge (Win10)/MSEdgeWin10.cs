@@ -17,7 +17,8 @@ public class MicrosoftEdge83 : ScriptBase
         var RandomNumber = rand.Next(5, 9);
 
         // Download the VSIwebsite.zip from the appliance and unzip in the %temp% folder
-        CopyFile(KnownFiles.WebSite, $"{temp}\\LoginPI\\vsiwebsite.zip", overwrite: true);
+        RemoveFolder($"{temp}\\LoginPI\\vsiwebsite");
+		CopyFile(KnownFiles.WebSite, $"{temp}\\LoginPI\\vsiwebsite.zip", overwrite: true);
         UnzipFile($"{temp}\\LoginPI\\vsiwebsite.zip", $"{temp}\\LoginPI\\vsiwebsite", overWrite: true);
 
         // Start Browser
