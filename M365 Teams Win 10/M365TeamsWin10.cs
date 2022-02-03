@@ -1,4 +1,4 @@
-// MicrosoftTeams script version 20210928
+// MicrosoftTeams script version 20220128
 // Developed by David Glaeser and Blair Parkhill
 // Uses path "C:\Program Files (x86)\Microsoft\Teams\current\Teams.exe"
 // Pre-reqs
@@ -6,8 +6,9 @@
 //      Works with M365 Image for Azure Win 10, no email registration required to activate teams per user
 // Notes
 //      Oct 8 update (See Teams > Help > What's New) changes sign in window
-//      10/14 - Changed Join Meeting Code
+//      10/14/21 - Changed Join Meeting Code
 //      10/21 - Fixed popup issue with Ts & Cs
+//      01/22 - Fixed message recipient list selection which changed in Teams. Had to use xPath (lines 132 & 135)
 
 using LoginPI.Engine.ScriptBase; //standard class
 using System; //used for rand and other
@@ -33,10 +34,6 @@ public class Teams : ScriptBase
         var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number between 0 and 9
         var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number between 0 and 9
         string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree); //WVD USER 0001 to WVD USER 0499
-        
-        //Set Teams Reg values - see end of script to enable reg functions
-        //Wait(seconds:3, showOnScreen:true, onScreenText:"Setting Reg Values");
-        //RegImport(create_regfile(@"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Teams",@"LoggedInOnce",@"dword:00000001"));
         
         // Start teams if not running
         Wait(3, showOnScreen: true, onScreenText: "Verifying Teams is Running");
@@ -99,7 +96,6 @@ public class Teams : ScriptBase
         finally{}
 
         // Leave meeting if it is still connected
-        // MainWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[2]/Group/Button[4]/Pane").Click();
         Wait(3, showOnScreen: true, onScreenText: "Leaving the meeting if it's still connected");
         try{
         var TeamsWindow2 = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "*Teams*", processName : "Teams");
@@ -133,20 +129,14 @@ public class Teams : ScriptBase
         Type("{ENTER}");
         StopTimer(name: "Chat");
         Wait(5);
-        TeamsWindow.FindControl(className : "Text", title : "People").Click();
+        TeamsWindow.FindControl(className : "TabItem", title : "People").Click();
         Wait(5);
         try {
-        //TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[2]/List/ListItem/Text").Click(); } //I've seen this get changed if the user doesn't hangup the previous meeting Group[3]
-        var msgRecipientList = TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND"); //The next 4 lines help with the changing message list
-        var msgRecipientFind = msgRecipientList.FindControl(title: "Search results*", searchRecursively:false);
-        var msgRecipientBtn = msgRecipientFind.FindControlWithXPath(xPath : "List/ListItem/Text");
-        msgRecipientBtn.Click();
+        var msgRecipient = TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[5]/Document/Group/ListItem/Hyperlink");
+        msgRecipient.Click();
         }
         catch{}
         finally{}
-        /*try {TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[3]/List/ListItem/Text").Click(); }
-        catch{}
-        finally{}*/
         Wait(interactionWait);
         TeamsWindow.FindControl(className : "Edit", title : "Type a new message*").Click();
         Wait(interactionWait);
@@ -186,8 +176,6 @@ public class Teams : ScriptBase
         StopTimer(name:"Join_Meeting");
         Wait(3, showOnScreen: true, onScreenText: $"Participate in the meeting for {meetingWait} seconds");
         Wait(meetingWait);
-        //TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[3]/Button[7]/Pane").Click();
-        //TeamsWindow.FindControl(className : "Button", title : "Hang up").Click();
         Wait(3, showOnScreen: true, onScreenText: "Leaving the meeting");
         var callCtrlList = TeamsWindow.FindControlWithXPath(xPath : "Document:Chrome_RenderWidgetHostHWND/Group[3]"); //The next 4 lines help with the changing message list
         var hangUpNow = callCtrlList.FindControl(title: "Hang up*", searchRecursively:false);
@@ -199,27 +187,4 @@ public class Teams : ScriptBase
         Wait(3, showOnScreen: true, onScreenText: "Ending Teams script");
     }
    
-/*    private string create_regfile(string key, string value, string data)
-    {            
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
-        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "reg.reg");
-
-        sb.AppendLine("Windows Registry Editor Version 5.00");
-        sb.AppendLine();
-        sb.AppendLine($"[{key}]");
-        if(data.ToLower().Contains("dword"))
-        {
-            sb.AppendLine($"\"{value}\"={data.ToLower()}");
-        }
-        else
-        {
-            sb.AppendLine($"\"{value}\"=\"{data}\"");
-        }
-        sb.AppendLine();
-
-        System.IO.File.WriteAllText(file, sb.ToString());
-
-        return file;
-    }
-    */
 }
