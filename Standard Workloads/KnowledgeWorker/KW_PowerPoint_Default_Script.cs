@@ -44,7 +44,7 @@ public class M365PowerPoint524 : ScriptBase
         var appWasLeftOpen = MainWindow.GetTitle().Contains(newDocName);
         if (appWasLeftOpen)
         {
-            Log("Word was left open from previous run");
+            Log("PowerPoint was left open from previous run");
         }
         else
         {
