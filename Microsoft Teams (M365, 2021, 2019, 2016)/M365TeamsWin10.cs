@@ -19,21 +19,26 @@ public class Teams : ScriptBase
 {
     private void Execute()
     {
-        LoginPI.Engine.ScriptBase.Components.IWindow teamsBtn, meetingBtn, searchBar, activityBtn = null, chatBtn = null, callBtn = null;
+        LoginPI.Engine.ScriptBase.Components.IWindow chatBtn = null;
 
         // Script variables
         int interactionWait = 3;    // Wait time between interactions
         int meetingWait = 60;    // Wait time between interactions
-        string testMessage = "This is a test message.";         // Chat test message
+        //string testMessage = "This is a test message.";         // Chat test message
         var temp = GetEnvironmentVariable("TEMP"); // Define environementvariables to use with Workload
         var CurrentSessionID = Process.GetCurrentProcess().SessionId; //Get Session id
         var Verifyteams = Process.GetProcessesByName("teams").Where(p => p.SessionId == CurrentSessionID).Any(); //Verify if current user is running teams
-        var rand = new Random();   // Define random integer
-        var RandomNumber = rand.Next(0,4);  // Console.WriteLine("My wait time is = " + RandomNumber);
-        var RandomNumberOne = rand.Next(0,4); // first integer in chatRecipient number between 0 and 4
-        var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number between 0 and 9
-        var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number between 0 and 9
-        string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree); //WVD USER 0001 to WVD USER 0499
+        //var rand = new Random();   // Define random integer
+        //var RandomNumber = rand.Next(0,4);  // Console.WriteLine("My wait time is = " + RandomNumber);
+        //var RandomNumberOne = rand.Next(0,4); // first integer in chatRecipient number between 0 and 4
+        //var RandomNumberTwo = rand.Next(0,9); // second integer in chatRecipient number between 0 and 9
+        //var RandomNumberThree = rand.Next(1,9); // third integer in chatRecipient number between 0 and 9
+        //string chatRecipient = ("WVD USER 0" + RandomNumberOne + RandomNumberTwo + RandomNumberThree); //WVD USER 0001 to WVD USER 0499
+        var rand = new Random();   // Setup random integer
+        int number = rand.Next(1,132); // Choose random integer for username
+        string digits = number.ToString("000"); //adds leading zeros
+        string chatRecipient = ("LoginVSI" + digits); //LoginVSI001 to LoginVSI132
+        // Console.WriteLine("My user will be LoginVSI" + digits); //You can use this line to test your randomly generated value
         
         // Start teams if not running
         Wait(3, showOnScreen: true, onScreenText: "Verifying Teams is Running");

@@ -27,8 +27,8 @@ public class MicrosoftEdge83 : ScriptBase
         Wait(PageBrowseTime);
         
         // Navigate web
-        Wait(3, showOnScreen: true, onScreenText: $"Clinical Trials website for {PageBrowseTime} seconds");
-        Navigate("https://clinicaltrials.gov/");
+        Wait(3, showOnScreen: true, onScreenText: $"Microsoft Azure website for {PageBrowseTime} seconds");
+        Navigate("https://azure.microsoft.com/en-us/");
         MouseDown();
         MouseUp();
         MainWindow.Type("{PAGEDOWN}".Repeat(2));
@@ -36,8 +36,8 @@ public class MicrosoftEdge83 : ScriptBase
         Wait(PageBrowseTime);
         
         // Navigate web
-        Wait(3, showOnScreen: true, onScreenText: $"CDC website for {PageBrowseTime} seconds");
-        Navigate("https://cdc.gov");
+        Wait(3, showOnScreen: true, onScreenText: $"CNN website for {PageBrowseTime} seconds");
+        Navigate("https://www.cnn.com/");
         MouseDown();
         MouseUp();
         MainWindow.Type("{PAGEDOWN}".Repeat(2));

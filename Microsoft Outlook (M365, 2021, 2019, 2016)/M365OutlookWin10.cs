@@ -52,7 +52,7 @@ public class M365Outlook524 : ScriptBase
         //Wait(15);
 
         //BEGIN TRIAL LICENSE POPUP AUTOMATION ############################### If you are using M365 Enterprise LIcensing you can comment this section out
-
+/*
         // Look for the Activate Office popup dialog and click on it to bring to the top, then hit ESC
         StartTimer("SignInToSetupWindow");
         var SignInToSetup = FindWindow(className : "Win32 Window:NUIDialog", title : "Sign in to set up Office", processName : "OUTLOOK");
@@ -74,7 +74,7 @@ public class M365Outlook524 : ScriptBase
             Wait(1);
             MainWindowprivacyoption.FindControl(className : "Button:NetUIButton", title : "Close").Click();
             }
-        
+*/        
         //END TRIAL LICENSE POPUP AUTOMATION ###############################
 
         // Select an item in the Inbox
