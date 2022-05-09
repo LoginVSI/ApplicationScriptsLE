@@ -12,7 +12,7 @@ public class PrepareOffice2019 : ScriptBase
 {
     private void Execute()
     {
-        START(mainWindowTitle: "Word", mainWindowClass: "Win32 Window:OpusApp", processName: "WINWORD", timeout: 30, continueOnError: true);
+        START(mainWindowTitle: "*Word*", mainWindowClass: "Win32 Window:OpusApp", processName: "WINWORD", timeout: 30, continueOnError: true);
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Skip first run dialog");
         var openDialog = MainWindow.FindControlWithXPath(xPath: "*:NUIDialog", timeout: 5, continueOnError: true);
         if (openDialog is object)
