@@ -1,3 +1,6 @@
+// TARGET:winword.exe
+// START_IN:
+
 /////////////
 // Windows Application
 // winword.exe

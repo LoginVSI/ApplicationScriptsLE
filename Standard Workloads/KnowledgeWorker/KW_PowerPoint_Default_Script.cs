@@ -1,3 +1,6 @@
+// TARGET:powerpnt.exe
+// START_IN:
+
 /////////////
 // Windows Application
 // powerpnt.exe

@@ -1,3 +1,6 @@
+// TARGET:excel.exe
+// START_IN:
+
 /////////////
 // Windows Application
 // excel.exe

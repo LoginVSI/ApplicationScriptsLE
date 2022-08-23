@@ -1,3 +1,6 @@
+// TARGET:outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
+// START_IN:
+
 /////////////
 //Windows Application
 //outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
