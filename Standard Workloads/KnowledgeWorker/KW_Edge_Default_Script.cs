@@ -59,7 +59,7 @@ public class MicrosoftEdge : ScriptBase
         StopTimer("Logon");
 
         // Select the video page tab
-        Wait(seconds: waitTimeWithDisplay, showOnScreen: true, onScreenText: "Let's watch a video of an underwater dive");
+        Wait(seconds: waitTimeWithDisplay, showOnScreen: true, onScreenText: "Let's watch a video of an underwater dive!");
         Browser.FindWebComponentBySelector("a[id='videopage']").Click();
 
         // Watch video for 60 seconds
