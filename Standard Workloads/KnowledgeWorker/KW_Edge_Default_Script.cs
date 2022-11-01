@@ -19,7 +19,7 @@ public class MicrosoftEdge : ScriptBase
     private void Execute()
     {
         var temp = GetEnvironmentVariable("TEMP");
-
+        
         // Define random integer
         var waitTime = 2;
         var waitTimeWithDisplay = 3;
@@ -62,8 +62,8 @@ public class MicrosoftEdge : ScriptBase
         Wait(seconds: waitTimeWithDisplay, showOnScreen: true, onScreenText: "Let's watch a video of an underwater dive!");
         Browser.FindWebComponentBySelector("a[id='videopage']").Click();
 
-        // Watch video for 60 seconds
-        Wait(60);
+        // Watch video for 20 seconds
+        Wait(20);
 
         // Navigate back to main homepage and Click on Article
         Browser.Back();
