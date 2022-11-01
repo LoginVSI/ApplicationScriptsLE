@@ -30,6 +30,10 @@ public class M365Excel524 : ScriptBase
 
         _tempFolder = GetEnvironmentVariable("TEMP");
 
+        // Optionally you can use the MyDocuments folder for file storage by setting the temp folder as follows
+        // _tempFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        // Directory.CreateDirectory($"{_tempFolder}\\LoginPI");
+
         Log(_tempFolder);
 
         // Download file from the appliance through the KnownFiles method, if it already exists: Skip Download.

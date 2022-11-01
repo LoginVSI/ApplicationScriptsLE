@@ -20,6 +20,10 @@ public class M365PowerPoint524 : ScriptBase
 
         var temp = GetEnvironmentVariable("TEMP");
 
+        // Optionally you can use the MyDocuments folder for file storage by setting the temp folder as follows
+        // var temp = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        // Directory.CreateDirectory($"{temp}\\LoginPI");
+
         // Download file from the appliance through the KnownFiles method, if it already exists: Skip Download.
         Wait(seconds:3, showOnScreen:true, onScreenText:"Get .pptx file");
         if(!(FileExists($"{temp}\\LoginPI\\loginvsi.pptx")))

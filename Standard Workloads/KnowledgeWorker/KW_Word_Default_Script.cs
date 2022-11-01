@@ -19,6 +19,10 @@ public class M365Word813 : ScriptBase
         // This is a language dependent script. English is required.
 
         var temp = GetEnvironmentVariable("TEMP");
+        
+        // Optionally you can use the MyDocuments folder for file storage by setting the temp folder as follows
+        // var temp = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        // Directory.CreateDirectory($"{temp}\\LoginPI");
 
         // Define random integer
         var waitTime = 2;
