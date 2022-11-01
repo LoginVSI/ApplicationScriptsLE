@@ -3,7 +3,8 @@
 
 /////////////
 //Windows Application
-//outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
+// Workload: TaskWorker
+// Version:  1.0
 //
 /////////////
 

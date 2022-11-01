@@ -3,7 +3,8 @@
 
 /////////////
 // Windows Application
-// powerpnt.exe
+// Workload: KnowledgeWorker
+// Version: 1.0
 // 
 /////////////
 

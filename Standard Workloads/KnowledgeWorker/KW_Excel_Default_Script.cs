@@ -3,7 +3,8 @@
 
 /////////////
 // Windows Application
-// excel.exe
+// Workload: KnowledgeWorker
+// Version: 1.0
 // 
 /////////////
 

@@ -3,7 +3,8 @@
 
 /////////////
 // Windows Application
-// winword.exe
+// Workload: KnowledgeWorker
+// Version: 1.0
 // 
 /////////////
 /// 

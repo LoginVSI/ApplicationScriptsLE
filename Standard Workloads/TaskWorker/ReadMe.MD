@@ -5,7 +5,7 @@
 | Version | 0.1 |
 
 ## Description
-The Task Worker is designed for 2(v)CPU environments. This is a well-balanced less intensive workload that stresses the system smoothly, resulting in higher CPU, RAM and IO usage.
+The Task Worker is designed for 2(v)CPU environments. This is a well-balanced less intensive workload that stresses the system smoothly, resulting in lower CPU, RAM and IO usage.
 
 This document describes how to import this workload work with it. 
 

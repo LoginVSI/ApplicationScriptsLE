@@ -2,9 +2,10 @@
 // URL:
 // MicrosoftEdge Script Version 20210524
 
-/////////////Admin
+/////////////
 // New Microsoft Edge(...)
-//
+// Workload: TaskWorker
+// Version:  1.0
 /////////////
 
 /*
