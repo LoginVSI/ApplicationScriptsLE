@@ -25,11 +25,11 @@ The applications then need to be placed inside an application group. They need t
 
 | Application | Run once | Leave application running | Type | Target
 |--|--|--|--|--|
-| KW_PrepareOffice365 | Enabled | Disabled | Windows Application | winword.exe
-| TW_M365_Edge_Static_Local_Page | Disabled | Disabled | New Microsoft Edge | Leave Blank
-| KW_Outlook| Disabled | Enabled | Windows Application | outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
-| KW_Excel | Disabled | Enabled | Windows Application | excel.exe
-| KW_Close Excel | Disabled | Disabled | Windows Application | excel.exe
+| TW_PrepareOffice365 | Enabled | Disabled | Windows Application | winword.exe
+| TW_Edge_Static_Local_Page | Disabled | Disabled | New Microsoft Edge | Leave Blank
+| TW_Outlook| Disabled | Enabled | Windows Application | outlook.exe /importprf %TEMP%\LoginPI\outlook.prf
+| TW_Excel | Disabled | Enabled | Windows Application | excel.exe
+| TW_Close Excel | Disabled | Disabled | Windows Application | excel.exe
 
 An example of a configured application group:
 ##![](assets/20220209_145343_image.png)
