@@ -1,0 +1,1 @@
+Place the video in c:\temp\loginvsi.
