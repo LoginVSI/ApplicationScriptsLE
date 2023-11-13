@@ -32,7 +32,7 @@ public class MicrosoftEdge : ScriptBase
 
         // Start Browser
         Wait(seconds: 3, showOnScreen: true, onScreenText: "Start Browser");
-        StartBrowser();
+        StartBrowser(useInPrivateBrowsing:true);
         MainWindow.Maximize();
         Wait(waitTime);
 
