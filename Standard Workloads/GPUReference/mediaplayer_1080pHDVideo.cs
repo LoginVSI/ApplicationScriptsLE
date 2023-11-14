@@ -27,7 +27,7 @@ public class Mediaplayer : ScriptBase
         MPWindow.Type("{Ctrl+O}");
         Wait(1);
         MPWindow.Type("{ALT+N}");
-        Type("C:\\temp\\loginvsi\\1080pHDVideo.mp4 {Enter}");
+        Type("C:\\temp\\loginvsi\\1080HDVideo.mp4 {Enter}");
         Wait(1);
         // Setting mode to loop playback
         try{
