@@ -36,6 +36,20 @@ public class MicrosoftEdge : ScriptBase
         MainWindow.Maximize();
         Wait(waitTime);
 
+        //Check for Personalize Your web experience
+        try
+        {
+            var edgeWindow = FindWindow(className : "Pane:Chrome_WidgetWin_1", title : "Microsoft Edge", processName : "msedge");
+            var expWindow = edgeWindow.FindControl(className : "Button:MdTextButton", title : "Got it!");
+            if (expWindow != null)
+            {
+                Log("Found Personalize window notification. Attepmting to click Got it! button");
+                expWindow.Click();
+            }
+        }
+        catch (Exception)
+        {}
+
         // Navigate to the local html file
         Navigate($"file:///{temp}/LoginPI/vsiwebsite/chromescript/logonpage.html");
 
