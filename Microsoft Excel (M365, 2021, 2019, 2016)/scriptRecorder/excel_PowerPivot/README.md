@@ -1,6 +1,7 @@
 # Summary
 
-* Blog URL: 
+* Blog URL: https://www.loginvsi.com/resources/blog/login-vsi-script-recorder-and-microsoft-excel/
+* Video URL: https://www.youtube.com/watch?v=jmzv-I88554
 * Created with Script Recorder version 5.10, on Windows 11 Pro 23H2, 1920x1080 display with 100% scale, and Microsoft Excel for Microsoft 365 MSO (Version 2404 Build 16.0.17531.20004) 32-bit 
 * Using the financial sample xlsx from MS: https://learn.microsoft.com/en-us/power-bi/create-reports/sample-financial-download
 * The Power Pivot add-in needs to be installed

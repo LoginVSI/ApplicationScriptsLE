@@ -1,6 +1,7 @@
 # Summary
 
-* Blog URL: 
+* Blog URL: https://www.loginvsi.com/resources/blog/login-vsi-script-recorder-and-microsoft-excel/
+* Video URL: https://www.youtube.com/watch?v=-CVkj39cnaM
 * Created with Script Recorder version 5.10, on Windows 11 Pro 23H2, 1920x1080 display with 100% scale, and Microsoft Excel for Microsoft 365 MSO 32-bit (Version 2404 Build 16.0.17531.20004) 
 * Using the financial sample xlsx from MS: https://learn.microsoft.com/en-us/power-bi/create-reports/sample-financial-download
 * Save this file as this filename and path: c:\temp as Financial Sample_orig.xlsx -- or it could be in a different path with a different name, but the top of this script needs to be edited to reflect a different path
