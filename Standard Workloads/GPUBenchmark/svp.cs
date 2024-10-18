@@ -4,41 +4,36 @@ using LoginPI.Engine.ScriptBase;
 using System;
 using System.IO;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 public class Svp : ScriptBase
 {
-    // Note: keep the TARGET:ping magic comment at the beginning of this script since running the SpecViewPerf (SVP) later
     // Github: https://github.com/LoginVSI/ApplicationScriptsLE/tree/main/Standard%20Workloads/GPUBenchmark
     
     // Define vars
-    string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020"; // The directory path for SVP, which also contains RunViewperf executable, and should also have the viewset runs results directories in it once they finish running
-    string archivePath; // The subdirectory name to store archived results within the SVP path
-
-    string svpExeName = "RunViewperf.exe"; // The executable name of RunViewperf.exe
-    string viewPerfExeName = "viewperf.exe"; // The executable name of viewperf.exe
-    string viewsetName = "3dsmax"; // The viewset to run, possible values are: 3dsmax, etc.
-    string resolution = "native"; // The resolution to use, possible values are: native, etc.
-
+    string viewsetName = "snx"; // The viewset to run, possible values are: 3dsmax, catia, creo, energy, maya, medical, snx, sw
+    string resolution = "1920x1080"; // Only set this if you need to. The resolution to use, possible values are: native, 1920x1080, etc.     
+    bool terminateExistingProcesses = true; // Set to true to terminate existing processes if found
+    string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020"; // The directory path for SVP and RunViewperf exe, and should have have the viewset runs results directories
     int timeoutProcessStartSeconds = 45; // Max time to wait for runviewperf.exe to start running
     int processCheckIntervalSeconds = 5; // Interval to check if runviewperf.exe is still running
     int maxProcessRunTimeSeconds = 60 * 60; // Max allowed time for runviewperf.exe to run (in seconds)
     int jsFileExistenceTimeoutSeconds = 60; // Max time to wait for the *.js file to exist
-    int fileSizeCheckIntervalSeconds = 5; // Interval to check if the *.js file size has stopped changing
-
+    
+    string archivePath; // The subdirectory name to store archived results within the SVP path
+    string svpExeName = "RunViewperf.exe"; // The executable name of RunViewperf.exe
+    string viewPerfExeName = "viewperf.exe"; // The executable name of viewperf.exe    
     string resultDirectoryPattern = "results_2*"; // Pattern for results directories within the SVP directory
-
-    bool terminateExistingProcesses = true; // Set to true to terminate existing processes if found
-
     string hostAndUser; // Concatenation of hostname and username
-
     Process process; // To access the process across methods
     string startTimestamp; // Start timestamp of runviewperf
     string endTimestamp; // End timestamp of runviewperf
+    string jsFilePath; // Path to the .js file found
 
     public void Execute() 
     {
-        archivePath = Path.Combine(svpDirPath, "resultsArchive"); // Initialize archivePath
-        hostAndUser = Environment.MachineName + " " + Environment.UserName; // Initialize hostAndUser
+        archivePath = Path.Combine(svpDirPath, "resultsArchive"); // Initialize archivePath var
+        hostAndUser = Environment.MachineName + " " + Environment.UserName; // Initialize hostAndUser var
 
         try // This is what's performing the actions in the workload
         {
@@ -47,11 +42,12 @@ public class Svp : ScriptBase
             RunSPECviewperf();
             CreateStartEndEvent();
             CheckForResultsAndJsFile();
+            ParseJsFile();
             ProcessPlatformMetrics();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex}");
+            Log($"An error occurred: {ex}");
             return;
         }
         finally
@@ -63,9 +59,9 @@ public class Svp : ScriptBase
         }
     }
 
-    void CheckAndTerminateExistingProcesses() // Check if runviewperf.exe or viewperf.exe is already running
+    void CheckAndTerminateExistingProcesses() // Check if runviewperf.exe or viewperf.exe are already running
     {
-        Console.WriteLine("Starting method: CheckAndTerminateExistingProcesses");
+        Log("Starting method: CheckAndTerminateExistingProcesses");
         
         string runViewPerfProcessName = Path.GetFileNameWithoutExtension(svpExeName); // "RunViewperf"
         string viewPerfProcessName = Path.GetFileNameWithoutExtension(viewPerfExeName); // "viewperf";
@@ -77,7 +73,7 @@ public class Svp : ScriptBase
         {
             if (terminateExistingProcesses)
             {
-                Console.WriteLine("Existing runviewperf.exe or viewperf.exe processes found. Terminating them.");
+                Log("Existing runviewperf.exe or viewperf.exe processes found. Terminating them.");
 
                 foreach (var proc in runViewPerfProcesses)
                 {
@@ -85,20 +81,20 @@ public class Svp : ScriptBase
                     {
                         if (!proc.CloseMainWindow())
                         {
-                            proc.Kill(); // Force kill if no main window
+                            proc.Kill();
                         }
                         else
                         {
-                            if (!proc.WaitForExit(5000)) // Wait up to 5 seconds
+                            if (!proc.WaitForExit(5000))
                             {
-                                proc.Kill(); // Force kill if not exited
+                                proc.Kill();
                             }
                         }
-                        Console.WriteLine($"Terminated {svpExeName} process (ID: {proc.Id}).");
+                        Log($"Terminated {svpExeName} process (ID: {proc.Id}).");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error terminating {svpExeName} process (ID: {proc.Id}): {ex}");
+                        Log($"Error terminating {svpExeName} process (ID: {proc.Id}): {ex}");
                     }
                     finally
                     {
@@ -112,20 +108,20 @@ public class Svp : ScriptBase
                     {
                         if (!proc.CloseMainWindow())
                         {
-                            proc.Kill(); // Force kill if no main window
+                            proc.Kill(); 
                         }
                         else
                         {
-                            if (!proc.WaitForExit(5000)) // Wait up to 5 seconds
+                            if (!proc.WaitForExit(5000))
                             {
-                                proc.Kill(); // Force kill if not exited
+                                proc.Kill();
                             }
                         }
-                        Console.WriteLine($"Terminated {viewPerfExeName} process (ID: {proc.Id}).");
+                        Log($"Terminated {viewPerfExeName} process (ID: {proc.Id}).");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error terminating {viewPerfExeName} process (ID: {proc.Id}): {ex}");
+                        Log($"Error terminating {viewPerfExeName} process (ID: {proc.Id}): {ex}");
                     }
                     finally
                     {
@@ -133,11 +129,11 @@ public class Svp : ScriptBase
                     }
                 }
 
-                Console.WriteLine("Existing processes terminated.");
+                Log("Existing processes terminated.");
             }
             else
             {
-                Console.WriteLine("Either runviewperf.exe or viewperf.exe is already running. Exiting script.");
+                Log("Either runviewperf.exe or viewperf.exe is already running. Exiting script.");
                 throw new InvalidOperationException("Processes already running");
             }
         }
@@ -145,13 +141,13 @@ public class Svp : ScriptBase
 
     void MoveExistingResultsToArchive() // Moving existing SVP results to defined archive directory
     {
-        Console.WriteLine("Starting method: MoveExistingResultsToArchive");
+        Log("Starting method: MoveExistingResultsToArchive");
 
         // Create resultsArchive directory if it doesn't exist
         if (!Directory.Exists(archivePath))
         {
             Directory.CreateDirectory(archivePath);
-            Console.WriteLine($"Created directory: {archivePath}");
+            Log($"Created directory: {archivePath}");
         }
 
         // Get directories that start with "results_2" (non-recursively)
@@ -165,11 +161,11 @@ public class Svp : ScriptBase
             try // Move the directory to the archive
             {
                 Directory.Move(dir, destPath);
-                Console.WriteLine($"Successfully moved: {dir} to {destPath}");
+                Log($"Successfully moved: {dir} to {destPath}");
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"Error processing {dir}: {ex}");
+                Log($"Error processing {dir}: {ex}");
             }
         }
 
@@ -177,21 +173,20 @@ public class Svp : ScriptBase
         directories = Directory.GetDirectories(svpDirPath, resultDirectoryPattern, SearchOption.TopDirectoryOnly);
         if (directories.Length > 0)
         {
-            Console.WriteLine("There are still results_2* directories remaining in the source path after moving.");
+            Log("There are still results_2* directories remaining in the source path after moving.");
         }
         else
         {
-            Console.WriteLine("All results_2* directories have been moved successfully.");
+            Log("All results_2* directories have been moved successfully.");
         }  
     }
 
-    void RunSPECviewperf()
+    void RunSPECviewperf() // Invoking SVP and ensuring it's running //
     {
-        Console.WriteLine("Starting method: RunSPECviewperf");
-        /// Invoking SVP and ensuring it's running ///
+        Log("Starting method: RunSPECviewperf");
 
         // Build the command line arguments
-        string arguments = $"-viewset {viewsetName} -resolution {resolution} -nogui";
+        string arguments = $"-viewset {viewsetName} -nogui -resolution {resolution}";
 
         // Start the process
         process = new Process();
@@ -204,11 +199,11 @@ public class Svp : ScriptBase
 
         if (!process.Start())
         {
-            Console.WriteLine($"Failed to start {svpExeName}. Exiting...");
+            Log($"Failed to start {svpExeName}. Exiting...");
             throw new ApplicationException($"Failed to start {svpExeName}");
         }
 
-        Console.WriteLine($"{svpExeName} has been started.");
+        Log($"{svpExeName} has been started.");
 
         // Wait for the process to appear in the process list within the timeout
         bool isProcessRunning = false;
@@ -222,25 +217,25 @@ public class Svp : ScriptBase
             if (Process.GetProcessesByName(runViewPerfProcessName).Length > 0)
             {
                 isProcessRunning = true;
-                Console.WriteLine($"{svpExeName} is confirmed running.");
+                Log($"{svpExeName} is confirmed running.");
                 break;
             }
             TimeSpan elapsed = DateTime.Now - waitStartTime;
-            Console.WriteLine($"Waiting for {svpExeName} to start. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
+            Log($"Waiting for {svpExeName} to start. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
             Wait(1); // Wait before checking again
         }
 
         if (!isProcessRunning)
         {
-            Console.WriteLine($"{svpExeName} did not start within {timeoutProcessStartSeconds} seconds. Exiting...");
+            Log($"{svpExeName} did not start within {timeoutProcessStartSeconds} seconds. Exiting...");
             throw new TimeoutException($"{svpExeName} did not start in time");
         }
 
         // Record the start timestamp
         startTimestamp = DateTime.Now.ToString("s"); // Start timestamp in sortable date/time pattern
 
-        // Now, wait for the process to end, checking every processCheckIntervalSeconds, up to maxProcessRunTimeSeconds
+        // Now, wait for the process to end on its own, checking every processCheckIntervalSeconds, up to maxProcessRunTimeSeconds
         DateTime processStartTime = DateTime.Now;
         waitIteration = 0;
         waitStartTime = DateTime.Now;
@@ -248,16 +243,16 @@ public class Svp : ScriptBase
         {
             if ((DateTime.Now - processStartTime).TotalSeconds > maxProcessRunTimeSeconds)
             {
-                Console.WriteLine($"{svpExeName} has been running for more than {maxProcessRunTimeSeconds / 60} minutes. Exiting...");
+                Log($"{svpExeName} has been running for more than {maxProcessRunTimeSeconds / 60} minutes. Exiting...");
                 process.Kill();
                 throw new TimeoutException($"{svpExeName} exceeded max runtime");
             }
             TimeSpan elapsed = DateTime.Now - waitStartTime;
-            Console.WriteLine($"Waiting for {svpExeName} to finish. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
+            Log($"Waiting for {svpExeName} to finish. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
             Wait(processCheckIntervalSeconds);
         }
-        Console.WriteLine($"{svpExeName} has finished running.");
+        Log($"{svpExeName} has finished running.");
 
         // Record the end timestamp
         endTimestamp = DateTime.Now.ToString("s"); // End timestamp in sortable date/time pattern
@@ -265,14 +260,14 @@ public class Svp : ScriptBase
 
     void CreateStartEndEvent() // Create Event with Start and End Timestamps
     {
-        Console.WriteLine("Starting method: CreateStartEndEvent");
-        string eventTitle = $"{startTimestamp} start {endTimestamp} end with {viewsetName} on {hostAndUser}";
+        Log("Starting method: CreateStartEndEvent");
+        string eventTitle = $"{startTimestamp} start, {endTimestamp} end, with {viewsetName}, on {hostAndUser}";
         CreateEvent(title: eventTitle, description: "");
     }
 
     void CheckForResultsAndJsFile() // Check for results directory and *.js file
     {
-        Console.WriteLine("Starting method: CheckForResultsAndJsFile");
+        Log("Starting method: CheckForResultsAndJsFile");
         
         // Wait for results_2* directory to appear
         DateTime resultWaitStartTime = DateTime.Now;
@@ -284,73 +279,147 @@ public class Svp : ScriptBase
             resultDirectories = Directory.GetDirectories(svpDirPath, resultDirectoryPattern, SearchOption.TopDirectoryOnly);
             if (resultDirectories.Length > 0)
             {
-                Console.WriteLine("Results directory found.");
-                Console.WriteLine($"Results directory name: {resultDirectories[0]}");
+                Log("Results directory found.");
+                Log($"Results directory name: {resultDirectories[0]}");
+                jsFilePath = FindJsFile(resultDirectories[0]); // Set jsFilePath here
                 break;
             }
             if ((DateTime.Now - resultWaitStartTime).TotalSeconds > jsFileExistenceTimeoutSeconds)
             {
-                Console.WriteLine($"Results directory did not appear within {jsFileExistenceTimeoutSeconds} seconds. Exiting...");
+                Log($"Results directory did not appear within {jsFileExistenceTimeoutSeconds} seconds. Exiting...");
                 throw new TimeoutException("Results directory not found in time");
             }
             TimeSpan elapsed = DateTime.Now - waitStartTime;
-            Console.WriteLine($"Waiting for results directory to appear. Wait iteration: {waitIteration}, {elapsed.TotalSeconds:F0} seconds waiting so far.");
+            Log($"Waiting for results directory to appear. Wait iteration: {waitIteration}, {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
             Wait(1); // Wait 1 second before checking again
         }
 
-        // Assuming only one results_2* directory
-        string resultsDir = resultDirectories[0];
+        // The jsFilePath is set within FindJsFile method
+    }
 
-        // Wait for *.js file to exist in results directory
-        DateTime jsFileWaitStartTime = DateTime.Now;
-        string[] jsFiles;
-        waitIteration = 0;
-        waitStartTime = DateTime.Now;
-        while (true)
+    string FindJsFile(string resultsDirectory)
+    {
+        // Search for the first .js file in the results directory
+        var jsFiles = Directory.GetFiles(resultsDirectory, "*.js", SearchOption.TopDirectoryOnly);
+        if (jsFiles.Length > 0)
         {
-            jsFiles = Directory.GetFiles(resultsDir, "*.js", SearchOption.TopDirectoryOnly);
-            if (jsFiles.Length > 0)
-            {
-                Console.WriteLine("*.js file found in results directory.");
-                Console.WriteLine($"JS file name: {jsFiles[0]}");
-                break;
-            }
-            if ((DateTime.Now - jsFileWaitStartTime).TotalSeconds > jsFileExistenceTimeoutSeconds)
-            {
-                Console.WriteLine($"*.js file did not appear within {jsFileExistenceTimeoutSeconds} seconds. Exiting...");
-                throw new TimeoutException("*.js file not found in time");
-            }
-            TimeSpan elapsed = DateTime.Now - waitStartTime;
-            Console.WriteLine($"Waiting for *.js file to appear. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
-            waitIteration++;
-            Wait(1); // Wait before checking again
+            Log("*.js file found in results directory.");
+            Log($"JS file name: {Path.GetFileName(jsFiles[0])}");
+            return jsFiles[0];
         }
-
-        // Track file size of the *.js file until it stops changing
-        string jsFile = jsFiles[0];
-        long lastFileSize = 0;
-        waitIteration = 0;
-        waitStartTime = DateTime.Now;
-        while (true)
+        else
         {
-            long currentFileSize = new FileInfo(jsFile).Length;
-            if (currentFileSize == lastFileSize)
+            throw new FileNotFoundException("No .js file found in the results directory.");
+        }
+    }
+
+    void ParseJsFile() // New method to parse the .js file
+    {
+        Log("Starting method: ParseJsFile");
+        try
+        {
+            string fileContent = ReadJsFile();
+
+            // Extract and log the first key in the "Scores" section
+            string scoresKey = ExtractScoresKey(fileContent);
+            Log($"Viewset name: {scoresKey}");
+
+            // Extract and log all benchmark data iteratively
+            ExtractAllBenchmarkData(fileContent);
+        }
+        catch (Exception ex)
+        {
+            Log($"Error: {ex.Message}");
+        }
+    }
+
+    private string ReadJsFile()
+    {
+        if (string.IsNullOrEmpty(jsFilePath))
+            throw new InvalidOperationException("JS file path is not set.");
+
+        if (!File.Exists(jsFilePath))
+            throw new FileNotFoundException($"The file was not found: {jsFilePath}");
+
+        return File.ReadAllText(jsFilePath);
+    }
+
+    private string ExtractScoresKey(string content)
+    {
+        // Pattern to find the first key inside "Scores": {
+        string pattern = @"""Scores"":\s*{\s*""([^""]+)""\s*:";
+        Match match = Regex.Match(content, pattern, RegexOptions.Singleline);
+
+        if (match.Success && match.Groups.Count > 1)
+        {
+            return match.Groups[1].Value;
+        }
+        else
+        {
+            throw new Exception("Scores key not found.");
+        }
+    }
+
+    private void ExtractAllBenchmarkData(string content)
+    {
+        int index = 1;
+        bool foundMore = true;
+
+        while (foundMore)
+        {
+            try
             {
-                Console.WriteLine("*.js file size has stabilized.");
-                break;
+                string blockPattern = @$"{{[^{{}}]*""Index""\s*:\s*{index}[^{{}}]*}}";
+                Match blockMatch = Regex.Match(content, blockPattern, RegexOptions.Singleline);
+
+                if (!blockMatch.Success)
+                {
+                    foundMore = false;
+                    break;
+                }
+
+                string blockContent = blockMatch.Value;
+
+                string fpsPattern = @"""FPS""\s*:\s*([\d.]+)";
+                string timeStampPattern = @"""TimeStamp""\s*:\s*""([^""]+)""";
+                string namePattern = @"""Name""\s*:\s*""([^""]+)""";
+
+                string fps = ExtractValue(blockContent, fpsPattern);
+                string timeStamp = ExtractValue(blockContent, timeStampPattern);
+                string name = ExtractValue(blockContent, namePattern);
+
+                Log($"Index: {index}");
+                Log($"  FPS: {fps}");
+                Log($"  TimeStamp: {timeStamp}");
+                Log($"  Name: {name}");
+
+                index++;
             }
-            lastFileSize = currentFileSize;
-            TimeSpan elapsed = DateTime.Now - waitStartTime;
-            Console.WriteLine($"Waiting for *.js file size to stabilize. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
-            waitIteration++;
-            Wait(fileSizeCheckIntervalSeconds);
+            catch (Exception ex)
+            {
+                Log($"Error extracting data for Index {index}: {ex.Message}");
+                foundMore = false;
+            }
+        }
+    }
+
+    private string ExtractValue(string input, string pattern)
+    {
+        Match match = Regex.Match(input, pattern, RegexOptions.Singleline);
+        if (match.Success && match.Groups.Count > 1)
+        {
+            return match.Groups[1].Value;
+        }
+        else
+        {
+            throw new Exception($"Pattern not found: {pattern}");
         }
     }
 
     void ProcessPlatformMetrics() // Platform Metrics processing and injection
     {
-        Console.WriteLine("Starting method: ProcessPlatformMetrics");
-        Console.WriteLine("Processing Platform Metrics and injecting into Login Enterprise API will take place here.");
+        Log("Starting method: ProcessPlatformMetrics");
+        Log("Processing Platform Metrics and injecting into Login Enterprise API will take place here.");
     }
 }
