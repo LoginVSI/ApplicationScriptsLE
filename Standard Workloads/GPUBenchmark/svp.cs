@@ -7,13 +7,26 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Text;
+using System.Globalization;
 
 public class Svp : ScriptBase
 {
     // Github: https://github.com/LoginVSI/ApplicationScriptsLE/tree/main/Standard%20Workloads/GPUBenchmark
 
-    // Parameters for SPECviewperf execution
-    string viewsetName = "snx"; // The viewset to run
+    // Variables for PowerShell script
+    string configurationAccessToken = "**********";  // Your configuration access token here
+    string baseUrl = "**********";  // Your base URL here
+    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
+    string environmentId = "**********";  // Your environment key here
+    string displayName;  // Display Name, set dynamically based on ExtractScoresKey()
+    string metricId;  // Metric Identifier, set dynamically based on displayName
+    string unit = "FPS";  // Metric Unit
+    string groupName = "GPU";  // Group name for the metrics
+    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST)
+    string powershellScriptPath = "temp";  // Path to save the PowerShell script ("temp" for default temporary path)
+
+    // Variables for SPECviewperf execution
+    string viewsetName = "snx"; // The viewset to run (e.g., snx, sw, maya, etc.)
     string resolution = "1920x1080"; // The resolution to use
     bool terminateExistingProcesses = true; // Terminate existing processes if found
     string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020"; // Directory path for SVP and RunViewperf.exe
@@ -32,15 +45,6 @@ public class Svp : ScriptBase
     string startTimestamp; // Start timestamp of runviewperf
     string endTimestamp; // End timestamp of runviewperf
     string jsFilePath; // Path to the .js file found
-
-    // Variables for PowerShell script
-    string configurationAccessToken = "put_your_config_token_here";  // Access Token
-    string baseUrl = "https://myBase.BaseURL.com/";  // Base URL for API
-    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
-    string environmentId = "0e788b99-fd50-4129-9c20-9191a5ea31a5";  // Environment Key
-    string displayName;  // Display Name, set dynamically based on ExtractScoresKey()
-    string metricId = "specviewperf.viewset.gpu.framerate";  // Metric Identifier
-    string unit = "FPS";  // Metric Unit
 
     // List to store benchmark data extracted from the .js file
     List<BenchmarkData> benchmarkDataList = new List<BenchmarkData>();
@@ -385,6 +389,9 @@ public class Svp : ScriptBase
             Log($"Viewset name: {scoresKey}");
             displayName = scoresKey; // Set displayName dynamically
 
+            // Set metricId based on displayName
+            metricId = $"specviewperf.viewset.gpu.framerate.{displayName}";
+
             // Extract and store all benchmark data iteratively
             ExtractAllBenchmarkData(fileContent);
         }
@@ -457,8 +464,14 @@ public class Svp : ScriptBase
                     throw new Exception($"Invalid FPS value: {fps}");
                 }
 
-                // Convert timeStamp to ISO 8601 format
-                if (!DateTime.TryParseExact(timeStamp, "MM/dd/yy HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
+                // Parse timeOffset into a TimeSpan
+                if (!TimeSpan.TryParse(timeOffset, out TimeSpan offset))
+                {
+                    throw new Exception($"Invalid time offset format: {timeOffset}");
+                }
+
+                // Parse the original timestamp
+                if (!DateTime.TryParseExact(timeStamp, "MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dateTime))
                 {
                     // Try other possible formats if necessary
                     if (!DateTime.TryParse(timeStamp, out dateTime))
@@ -466,7 +479,11 @@ public class Svp : ScriptBase
                         throw new Exception($"Invalid TimeStamp format: {timeStamp}");
                     }
                 }
-                string isoTimeStamp = dateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+                // Adjust the time to UTC by subtracting the offset
+                DateTime utcDateTime = dateTime - offset;
+
+                string isoTimeStamp = utcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
 
                 // Create a BenchmarkData object
                 var data = new BenchmarkData
@@ -530,7 +547,7 @@ public class Svp : ScriptBase
             payloadBuilder.AppendFormat("\"unit\":\"{0}\",", EscapeString(unit));
             payloadBuilder.AppendFormat("\"instance\":\"{0}\",", EscapeString(data.Name));
             payloadBuilder.AppendFormat("\"value\":{0},", data.Fps);
-            payloadBuilder.AppendFormat("\"group\":\"{0}\",", EscapeString("GPU"));
+            payloadBuilder.AppendFormat("\"group\":\"{0}\",", EscapeString(groupName));
             payloadBuilder.AppendFormat("\"componentType\":\"{0}\"", EscapeString(Environment.MachineName));
             payloadBuilder.Append("}");
 
@@ -604,8 +621,17 @@ try {{
 }}
 ";
 
-        // Write the PowerShell script to a temporary file
-        tempScriptFile = Path.GetTempFileName() + ".ps1";
+        // Determine the path to save the PowerShell script
+        if (powershellScriptPath.ToLower() == "temp")
+        {
+            tempScriptFile = Path.GetTempFileName() + ".ps1";
+        }
+        else
+        {
+            tempScriptFile = Path.Combine(powershellScriptPath, "UploadPlatformMetrics.ps1");
+        }
+
+        // Write the PowerShell script to the specified location
         File.WriteAllText(tempScriptFile, scriptContent);
     }
 
@@ -656,11 +682,14 @@ try {{
         }
         finally
         {
-            // Clean up the temporary files
-            if (File.Exists(tempScriptFile))
-                File.Delete(tempScriptFile);
-            if (File.Exists(payloadFilePath))
-                File.Delete(payloadFilePath);
+            // Clean up the temporary files if using temp path
+            if (powershellScriptPath.ToLower() == "temp")
+            {
+                if (File.Exists(tempScriptFile))
+                    File.Delete(tempScriptFile);
+                if (File.Exists(payloadFilePath))
+                    File.Delete(payloadFilePath);
+            }
         }
     }
 
@@ -680,6 +709,6 @@ try {{
         public string Name { get; set; }  // Corresponds to 'instance' in the API
         public double Fps { get; set; }  // Corresponds to 'value' in the API
         public string TimeStamp { get; set; }  // Original timestamp
-        public string IsoTimeStamp { get; set; }  // Converted to ISO 8601 format
+        public string IsoTimeStamp { get; set; }  // Adjusted to UTC and formatted in ISO 8601
     }
 }
