@@ -14,25 +14,27 @@ public class Svp : ScriptBase
     // Github: https://github.com/LoginVSI/ApplicationScriptsLE/tree/main/Standard%20Workloads/GPUBenchmark
 
     // Variables for PowerShell script
-    string configurationAccessToken = "**********";  // Your configuration access token here
-    string baseUrl = "**********";  // Your base URL here
-    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
+    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST). The API only accepts Zulu ISO, so this can be used to make the datapoints stored and displayed correctly
+    string configurationAccessToken = "**********";  // Your configuration access token here. To create one log into the Login Enterprise web interface -> External notificatoins -> Public API -> New system access token -> provide a name for the token -> select Configuration from the Access-level drop-down -> Save -> in the new popup copy out the token and put here in this configurationAccessToken variable. Ensure to store the token elsewhere securely.
+    string baseUrl = "**********";  // Your base Login Enterprise URL here. For example: https://myLoginEnterprise.myDomain.com/
     string environmentId = "**********";  // Your environment key here
-    string displayName;  // Display Name, set dynamically based on ExtractScoresKey()
-    string metricId;  // Metric Identifier, set dynamically based on displayName
+
+    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
+    string powershellScriptPath = "temp";  // Path to save the PowerShell script ("temp" for default temporary path)
     string unit = "FPS";  // Metric Unit
     string groupName = "GPU";  // Group name for the metrics
-    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST)
-    string powershellScriptPath = "temp";  // Path to save the PowerShell script ("temp" for default temporary path)
+    string displayName;  // Display Name, set dynamically based on ExtractScoresKey()
+    string metricId;  // Metric Identifier, set dynamically based on displayName
 
     // Variables for SPECviewperf execution
     string viewsetName = "snx"; // The viewset to run (e.g., snx, sw, maya, etc.)
     string resolution = "1920x1080"; // The resolution to use
-    bool terminateExistingProcesses = true; // Terminate existing processes if found
     string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020"; // Directory path for SVP and RunViewperf.exe
+    
+    int maxProcessRunTimeSeconds = 60 * 60; // Max allowed time for runviewperf.exe to run (in seconds). Note that it should end by itself, so set this to max time tolerance
+    bool terminateExistingProcesses = true; // Terminate existing processes if found
     int timeoutProcessStartSeconds = 45; // Max time to wait for runviewperf.exe to start running
     int processCheckIntervalSeconds = 5; // Interval to check if runviewperf.exe is still running
-    int maxProcessRunTimeSeconds = 60 * 60; // Max allowed time for runviewperf.exe to run (in seconds)
     int jsFileExistenceTimeoutSeconds = 60; // Max time to wait for the *.js file to exist
 
     // Variables for results management
