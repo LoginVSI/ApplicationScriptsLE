@@ -15,8 +15,8 @@ public class Svp : ScriptBase
 
     // Variables for PowerShell script
     string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST). The Login Enterprise API only accepts Zulu ISO timestamps, so this can be used to make the datapoints stored and displayed correctly
-    string configurationAccessToken = "**********";  // Your configuration access token here. To create one log into the Login Enterprise web interface -> External notificatoins -> Public API -> New system access token -> provide a name for the token -> select Configuration from the Access-level drop-down -> Save -> in the new popup copy out the token and put here in this configurationAccessToken variable. Ensure to store the token elsewhere securely.
-    string baseUrl = "**********";  // Your base Login Enterprise URL here. For example: https://myLoginEnterprise.myDomain.com/
+    string configurationAccessToken = "**********";  // Your configuration access token here. To create one log into the Login Enterprise web interface -> External notifications -> Public API -> New system access token -> provide a name for the token -> select Configuration from the Access-level drop-down -> Save -> in the new popup copy out the token and put here in this configurationAccessToken variable. Ensure to store the token elsewhere securely.
+    string baseUrl = "**********";  // Your base Login Enterprise URL here including the ending slash. For example: https://myLoginEnterprise.myDomain.com/
     string environmentId = "**********";  // Your environment key/ID here. To get an environment ID to put here: log into the Login Enterprise web interface -> Environments -> Open the Environment to use -> at the end of the address bar of the browser find the environment unique ID, for example: 3221ce29-06ba-46a2-8c8b-da99dea341c4. Or create a new Environment in the Environments page -> Add environment -> fill out needed information in this page (but only Name is needed) -> Save -> the unique Environment ID will be at the end of the address bar
 
     string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
@@ -69,6 +69,14 @@ public class Svp : ScriptBase
             CheckForResultsAndJsFile();
             WaitForJsFileToBeReady();
             ParseJsFile();
+
+            // Check if metricId is set
+            if (string.IsNullOrEmpty(metricId))
+            {
+                Log("metricId is not set. Exiting...");
+                throw new Exception("metricId is null or empty");
+            }
+
             GeneratePowerShellScript();
             UploadPlatformMetricsPowerShellRunner();
         }
@@ -112,7 +120,7 @@ public class Svp : ScriptBase
                         }
                         else
                         {
-                            if (!proc.WaitForExit(5000))
+                            if (!proc.WaitForExit(1000))
                             {
                                 proc.Kill();
                             }
@@ -139,7 +147,7 @@ public class Svp : ScriptBase
                         }
                         else
                         {
-                            if (!proc.WaitForExit(5000))
+                            if (!proc.WaitForExit(1000))
                             {
                                 proc.Kill();
                             }
@@ -391,8 +399,11 @@ public class Svp : ScriptBase
             Log($"Viewset name: {scoresKey}");
             displayName = scoresKey; // Set displayName dynamically
 
-            // Set metricId based on displayName
-            metricId = $"specviewperf.viewset.gpu.framerate.{displayName}";
+            // Sanitize displayName for use in metricId
+            string sanitizedDisplayName = Regex.Replace(displayName, @"[^a-zA-Z0-9_\.]+", "_");
+
+            // Set metricId based on sanitizedDisplayName
+            metricId = $"specviewperf.viewset.gpu.framerate.{sanitizedDisplayName}";
 
             // Extract and store all benchmark data iteratively
             ExtractAllBenchmarkData(fileContent);
@@ -467,7 +478,7 @@ public class Svp : ScriptBase
                 }
 
                 // Parse timeOffset into a TimeSpan
-                if (!TimeSpan.TryParse(timeOffset, out TimeSpan offset))
+                if (!TryParseTimeOffset(timeOffset, out TimeSpan offset))
                 {
                     throw new Exception($"Invalid time offset format: {timeOffset}");
                 }
@@ -517,6 +528,40 @@ public class Svp : ScriptBase
         }
     }
 
+    private bool TryParseTimeOffset(string timeOffsetStr, out TimeSpan offset) // Handle time offset parsing
+    {
+        offset = TimeSpan.Zero;
+
+        if (string.IsNullOrWhiteSpace(timeOffsetStr))
+            return false;
+
+        // Remove whitespace
+        timeOffsetStr = timeOffsetStr.Trim();
+
+        // Handle '+' or '-' sign
+        bool isNegative = false;
+        if (timeOffsetStr.StartsWith("+"))
+        {
+            timeOffsetStr = timeOffsetStr.Substring(1);
+        }
+        else if (timeOffsetStr.StartsWith("-"))
+        {
+            isNegative = true;
+            timeOffsetStr = timeOffsetStr.Substring(1);
+        }
+
+        // Try parsing the time offset
+        if (TimeSpan.TryParse(timeOffsetStr, out TimeSpan parsedOffset))
+        {
+            offset = isNegative ? parsedOffset.Negate() : parsedOffset;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     private string ExtractValue(string input, string pattern) // Extract value using regex
     {
         Match match = Regex.Match(input, pattern, RegexOptions.Singleline);
@@ -563,8 +608,19 @@ public class Svp : ScriptBase
 
         string payload = payloadBuilder.ToString();
 
-        // Write payload to a temp file
-        payloadFilePath = Path.GetTempFileName() + ".json";
+        // Determine the path to save the PowerShell script and payload
+        if (powershellScriptPath.ToLower() == "temp")
+        {
+            tempScriptFile = Path.GetTempFileName() + ".ps1";
+            payloadFilePath = Path.GetTempFileName() + ".json";
+        }
+        else
+        {
+            tempScriptFile = Path.Combine(powershellScriptPath, "UploadPlatformMetrics.ps1");
+            payloadFilePath = Path.Combine(powershellScriptPath, "payload.json");
+        }
+
+        // Write payload to the determined path
         File.WriteAllText(payloadFilePath, payload);
 
         // Create the PowerShell script content
@@ -623,16 +679,6 @@ try {{
 }}
 ";
 
-        // Determine the path to save the PowerShell script
-        if (powershellScriptPath.ToLower() == "temp")
-        {
-            tempScriptFile = Path.GetTempFileName() + ".ps1";
-        }
-        else
-        {
-            tempScriptFile = Path.Combine(powershellScriptPath, "UploadPlatformMetrics.ps1");
-        }
-
         // Write the PowerShell script to the specified location
         File.WriteAllText(tempScriptFile, scriptContent);
     }
@@ -684,14 +730,11 @@ try {{
         }
         finally
         {
-            // Clean up the temporary files if using temp path
-            if (powershellScriptPath.ToLower() == "temp")
-            {
-                if (File.Exists(tempScriptFile))
-                    File.Delete(tempScriptFile);
-                if (File.Exists(payloadFilePath))
-                    File.Delete(payloadFilePath);
-            }
+            // Clean up the temporary files
+            if (File.Exists(tempScriptFile))
+                File.Delete(tempScriptFile);
+            if (File.Exists(payloadFilePath))
+                File.Delete(payloadFilePath);
         }
     }
 
