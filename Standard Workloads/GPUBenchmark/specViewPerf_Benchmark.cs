@@ -9,12 +9,12 @@ using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
 
-public class Svp : ScriptBase
+public class specViewPerf_Benchmark : ScriptBase
 {
     // Github: https://github.com/LoginVSI/ApplicationScriptsLE/tree/main/Standard%20Workloads/GPUBenchmark
 
     // Variables for PowerShell script
-    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST). The Login Enterprise API only accepts Zulu ISO timestamps, so this can be used to make the datapoints stored and displayed correctly
+    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST, "+7:00" or "7:00" for UTC+7). The Login Enterprise API only accepts Zulu ISO 8601 timestamps, so this can be used to adjust the timestamps to the correct time zone.
     string configurationAccessToken = "**********";  // Your configuration access token here. To create one log into the Login Enterprise web interface -> External notifications -> Public API -> New system access token -> provide a name for the token -> select Configuration from the Access-level drop-down -> Save -> in the new popup copy out the token and put here in this configurationAccessToken variable. Ensure to store the token elsewhere securely.
     string baseUrl = "**********";  // Your base Login Enterprise URL here including the ending slash. For example: https://myLoginEnterprise.myDomain.com/
     string environmentId = "**********";  // Your environment key/ID here. To get an environment ID to put here: log into the Login Enterprise web interface -> Environments -> Open the Environment to use -> at the end of the address bar of the browser find the environment unique ID, for example: 3221ce29-06ba-46a2-8c8b-da99dea341c4. Or create a new Environment in the Environments page -> Add environment -> fill out needed information in this page (but only Name is needed) -> Save -> the unique Environment ID will be at the end of the address bar
