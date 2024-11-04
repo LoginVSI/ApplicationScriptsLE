@@ -1,10 +1,8 @@
 # GPU Benchmark Workload
 
-*Version tested with Login Enterprise 5.13.6*
-
 ## Overview
 
-This workload automates the execution of SPECviewperf benchmarks and uploads the results as Platform Metrics to Login Enterprise. It provides an objective and standardized benchmarking process that is quick to configure, yielding valuable insights for baselining, performance comparisons, and configuration assessments.
+This workload automates the execution of SPECviewperf (SVP) benchmarks and uploads the results as Platform Metrics to Login Enterprise. It provides an objective and standardized benchmarking process that is quick to configure, yielding valuable insights for baselining, performance comparisons, and configuration assessments.
 
 **Key Features:**
 
@@ -28,7 +26,7 @@ The script performs the following steps:
 
 2. **Archive Existing Results**
 
-   - Moves any existing `results_2*` directories from the SPECviewperf directory to an archive directory.
+   - Moves any existing `results_*` (previous SVP test run(s)) directories from the SPECviewperf directory to an archive directory.
    - Ensures no residual result directories remain after archiving.
 
 3. **Run SPECviewperf**
@@ -45,12 +43,12 @@ The script performs the following steps:
 
 5. **Check for Results and JS File**
 
-   - Waits for the `results_2*` directory to be created after benchmarking.
+   - Waits for the `results_*` directory to be created after benchmarking.
    - Locates the `*.js` results file within the directory.
 
 6. **Wait for JS File to Be Ready**
 
-   - Monitors the `*.js` file to ensure it is fully written and stable before proceeding.
+   - Monitors the `*.js` file to ensure it is fully written and stabilized in size before proceeding.
 
 7. **Parse JS File**
 
@@ -70,21 +68,12 @@ The script performs the following steps:
 
 Update the following variables at the top of the script to match your environment:
 
-- **`string viewsetName = "snx";`**  
-  The SPECviewperf viewset to run. Examples include `"snx"`, `"sw"`, `"maya"`, etc.
-
-- **`string resolution = "1920x1080";`**  
-  The resolution for the benchmark. Options include resolutions like `"1920x1080"` or `"native"`.
-
-- **`string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020";`**  
-  The installation directory path for SPECviewperf and `RunViewperf.exe`.
-
 - **`string timeOffset = "0:00";`**  
   Time offset from UTC in hours:minutes. Adjusts timestamps to your local time zone. Examples:
 
   - `"-7:00"` for Pacific Standard Time (PST).
   - `"+7:00"` or `"7:00"` for UTC+7.
-
+  
 - **`string configurationAccessToken = "**********";`**  
   Your configuration access token for the Login Enterprise API. To obtain:
 
@@ -104,17 +93,26 @@ Update the following variables at the top of the script to match your environmen
   2. Navigate to **Environments**.
   3. You have two options:
 
-     - **Option A:** Open an existing environment.
+     - **Option A:** Use an existing Environment.
 
        - Click on the desired environment.
        - The environment ID is the unique identifier at the end of the browser's address bar URL (e.g., `3221ce29-06ba-46a2-8c8b-da99dea341c4`).
 
-     - **Option B:** Create a new environment.
+     - **Option B:** Create a new Environment.
 
        - Click on **Add Environment**.
        - Fill out the required information (only **Name** is necessary).
        - Click **Save**.
        - After saving, the unique environment ID will be at the end of the browser's address bar URL.
+
+- **`string viewsetName = "snx";`**  
+  The SPECviewperf viewset to run. Examples include `"snx"`, `"sw"`, `"maya"`, etc.
+
+- **`string resolution = "1920x1080";`**  
+  The resolution for the benchmark. Options include resolutions like `"1920x1080"` or `"native"`.
+
+- **`string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020";`**  
+  The installation directory path for SPECviewperf and `RunViewperf.exe`.
 
 ## Setup Steps
 
@@ -122,7 +120,7 @@ Before running the script, perform the following setup steps:
 
 1. **Upload the Workload Script:**
 
-   - Upload the `specViewPerf_Benchmark.cs` script to the Login Enterprise virtual appliance's web interface under the **Applications** page.
+   - Upload (import) the `specViewPerf_Benchmark.cs` script to the Login Enterprise virtual appliance's web interface under the **Applications** page.
 
 ## Benefits
 
