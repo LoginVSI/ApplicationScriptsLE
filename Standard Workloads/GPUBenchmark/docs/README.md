@@ -122,6 +122,16 @@ Before running the script, perform the following setup steps:
 
    - Upload (import) the `specViewPerf_Benchmark.cs` script to the Login Enterprise virtual appliance's web interface under the **Applications** page.
 
+## Prerequisites
+
+- **Login Enterprise Version:** This script has been tested with Login Enterprise version **5.13.6**.
+
+- **SPECviewperf Installation:** SPECviewperf must be installed and properly configured on the target machine.
+
+- **SPECviewperf Licensing:** Before installing and using SPECviewperf for this testing, please review your SPECviewperf licensing agreement to ensure that you are correctly licensed for this usage.
+
+- **Access Tokens and IDs:** Obtain a configuration access token and environment ID from your Login Enterprise instance.
+
 ## Benefits
 
 - **Quick Configuration:** Minimal setup required. Update a few variables, and you're ready to run the benchmark.
@@ -147,14 +157,6 @@ Examples of benchmarking results displayed in the Login Enterprise interface:
 ![Platform Metrics Daily View](platformMetricsResults_Day.png)
 
 *Figure: Platform Metrics displayed over a day timeframe.*
-
-## Prerequisites
-
-- **Login Enterprise Version:** This script has been tested with Login Enterprise version **5.13.6**.
-
-- **SPECviewperf Installation:** SPECviewperf must be installed and properly configured on the target machine.
-
-- **Access Tokens and IDs:** Obtain a configuration access token and environment ID from your Login Enterprise instance.
 
 ## Notes
 
