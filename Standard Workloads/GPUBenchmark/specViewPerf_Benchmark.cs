@@ -231,6 +231,8 @@ public class specViewPerf_Benchmark : ScriptBase
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
+        
+        StartTimer("SPECViewPerf_StartTime");
 
         if (!process.Start())
         {
@@ -258,7 +260,7 @@ public class specViewPerf_Benchmark : ScriptBase
             TimeSpan elapsed = DateTime.Now - waitStartTime;
             Log($"Waiting for {svpExeName} to start. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
-            Wait(1); // Wait before checking again
+            Wait(0.1); // Wait before checking again
         }
 
         if (!isProcessRunning)
@@ -266,6 +268,7 @@ public class specViewPerf_Benchmark : ScriptBase
             Log($"{svpExeName} did not start within {timeoutProcessStartSeconds} seconds. Exiting...");
             throw new TimeoutException($"{svpExeName} did not start in time");
         }
+        StopTimer("SPECViewPerf_StartTime");
 
         // Record the start timestamp
         startTimestamp = DateTime.Now.ToString("s"); // Start timestamp in sortable date/time pattern
