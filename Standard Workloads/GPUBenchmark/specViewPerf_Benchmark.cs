@@ -223,6 +223,8 @@ public class specViewPerf_Benchmark : ScriptBase
         // Build the command line arguments
         string arguments = $"-viewset {viewsetName} -nogui -resolution {resolution}";
 
+        StartTimer("SPECViewPerf_StartTime");
+        
         // Start the process
         process = new Process();
         process.StartInfo.FileName = Path.Combine(svpDirPath, svpExeName);
@@ -231,8 +233,6 @@ public class specViewPerf_Benchmark : ScriptBase
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
-        
-        StartTimer("SPECViewPerf_StartTime");
 
         if (!process.Start())
         {
