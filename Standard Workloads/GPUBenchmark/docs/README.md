@@ -1,5 +1,12 @@
 # SPECviewperf GPU Benchmark Workload
 
+## What’s new (Aug 2025)
+
+**Automatic clock-drift correction** and **secure Application credential injection** have been added.
+
+- The workload now measures local vs. appliance clock drift automatically and aligns all SPECviewperf timestamps to server UTC — no manual `timeOffset` required.
+- Use Application Credentials (Application **Username** for the viewset, Application **Password** for the configuration access token) to avoid hard-coding secrets.
+
 ## Overview
 
 This workload automates the execution of SPECviewperf (SVP) benchmarks and uploads the results as Platform Metrics to Login Enterprise. It provides an objective and standardized benchmarking process that is quick to configure, yielding valuable insights for baselining, performance comparisons, and configuration assessments.
@@ -47,9 +54,10 @@ The script performs the following steps:
    - Monitors the `*.js` file to ensure it is fully written and stabilized in size before proceeding.
 
 7. **Parse JS File**
-   - Parses the `*.js` file to extract benchmark data.
-   - Adjusts timestamps to UTC based on the specified time offset.
-   - Prepares the data for uploading to Login Enterprise.
+  - Parses the `*.js` file to extract benchmark data.
+  - **Automatically measures and corrects clock drift** by contacting the Login Enterprise appliance (reads the HTTP `Date` header and applies a half-round-trip correction), then converts captured local timestamps to server-aligned UTC before uploading. No manual `timeOffset` is required.
+  - Prepares the data for uploading to Login Enterprise.
+
 
 8. **Generate PowerShell Script**
    - Creates a PowerShell script to upload the benchmark data to the Login Enterprise API.
@@ -61,19 +69,16 @@ The script performs the following steps:
 
 Update the following variables at the top of the script to match your environment:
 
-- **`string timeOffset = "0:00";`**
-  - Time offset from UTC in hours:minutes. Adjusts timestamps to your local time zone.
-  - Examples:
-    - `"-7:00"` for Pacific Standard Time (PST).
-    - `"+7:00"` or `"7:00"` for UTC+7.
+- **`timeOffset` — _no longer required_**
+  - **Removed:** You do **not** need to set `timeOffset` manually.
+  - The script now performs an automatic clock-drift check against your Login Enterprise appliance before each run: it measures round-trip time using the appliance HTTP `Date` header, computes a half-round-trip correction, and converts local SPECviewperf timestamps to server-aligned UTC (Zulu) automatically. Leave `timeOffset` unset.
 
-- **`string configurationAccessToken = "**********";`**
-  - Your configuration access token for the Login Enterprise API. To obtain:
-    1. Log into Login Enterprise.
-    2. Navigate to **External notifications** > **Public API**.
-    3. Click **New system access token**.
-    4. Provide a name and select **Configuration** from the Access level dropdown.
-    5. Save and copy the token provided. Store it securely.
+- **`configurationAccessToken` / secure credentials**
+  - **Do not hard-code** API tokens in the script. Instead, use Login Enterprise **Application Credentials**:
+    - Put the SPECviewperf **viewset name** in **Application Username**.
+    - Put the Login Enterprise **configuration** system access token in **Application Password**.
+  - The workload reads `ApplicationUsername` and `ApplicationPassword` at runtime and injects them into the script securely. For details on configuring Application Credentials, see: [Applications: Scripting secure Application credentials](https://support.loginvsi.com/hc/en-us/articles/360001341979-Applications#h_01JASRQ2N7HX5RJT9M5C4BTPVX).
+  - Environment variable fallbacks are still supported but are less secure than Application Credentials.
 
     ![Create Access Token](createAccessToken.png)
 
@@ -116,12 +121,19 @@ Before running the script, perform the following setup steps:
 
    ![Import Application](importApplication.png)
 
+2. **Configure Application Credentials (recommended):**
+  - In the Login Enterprise UI under **Configuration → Applications**, edit the Application used for this workload and add Application Credentials.
+  - Put the SPECviewperf *viewset name* in **Username** and your *configuration* system access token in **Password**.
+  - This keeps tokens encrypted and avoids editing the script directly. See the Applications KB for instructions.
+
 ## Prerequisites
 
 - **Login Enterprise Version:** This script has been tested with Login Enterprise version 5.13.6.
 - **SPECviewperf Installation:** SPECviewperf must be installed and properly configured on the target machine.
 - **SPECviewperf Licensing:** Before installing and using SPECviewperf for this testing, review your SPECviewperf licensing agreement to ensure correct licensing for this usage.
 - **Access Tokens and IDs:** Obtain a configuration access token and environment ID from your Login Enterprise instance.
+- **TLS / Certificates (lab vs production):** For lab/self-signed deployments the script temporarily bypasses certificate validation during the drift check and upload steps. For production, ensure the appliance presents a valid TLS certificate or remove the bypass in the script. Regardless, keep API tokens in Application Credentials rather than embedding them in scripts.
+
 
 ## Benefits
 
@@ -143,6 +155,8 @@ Before running the script, perform the following setup steps:
 ![Platform Metrics Daily View](platformMetricsResults_Day.png)
 
 *Figure: Platform Metrics displayed over a day timeframe.*
+
+**Note:** All displayed timestamps are aligned to appliance UTC using automatic clock-drift correction so Platform Metrics correlate precisely with other platform events (EUX, VSImax, etc.).
 
 ## Notes
 
