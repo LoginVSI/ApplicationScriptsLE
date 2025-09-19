@@ -8,69 +8,92 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
+using System.Net;
 
 public class specViewPerf_Benchmark : ScriptBase
 {
     // Github: https://github.com/LoginVSI/ApplicationScriptsLE/tree/main/Standard%20Workloads/GPUBenchmark
 
-    // Variables for PowerShell script
-    string timeOffset = "0:00";  // Time offset in hours:minutes (e.g., "-7:00" for PST, "+7:00" or "7:00" for UTC+7). The Login Enterprise API only accepts Zulu ISO 8601 timestamps, so this can be used to adjust the timestamps to the correct time zone.
-    string configurationAccessToken = "**********";  // Your configuration access token here. To create one log into the Login Enterprise web interface -> External notifications -> Public API -> New system access token -> provide a name for the token -> select Configuration from the Access-level drop-down -> Save -> in the new popup copy out the token and put here in this configurationAccessToken variable. Ensure to store the token elsewhere securely.
-    string baseUrl = "**********";  // Your base Login Enterprise URL here including the ending slash. For example: https://myLoginEnterprise.myDomain.com/
-    string environmentId = "**********";  // Your environment key/ID here. To get an environment ID to put here: log into the Login Enterprise web interface -> Environments -> Open the Environment to use -> at the end of the address bar of the browser find the environment unique ID, for example: 3221ce29-06ba-46a2-8c8b-da99dea341c4. Or create a new Environment in the Environments page -> Add environment -> fill out needed information in this page (but only Name is needed) -> Save -> the unique Environment ID will be at the end of the address bar
+    // =========================
+    // Dynamic configuration (runtime)
+    // - We will try to populate these from secure Application credentials:
+    //   ApplicationUsername -> viewsetName
+    //   ApplicationPassword -> configurationAccessToken
+    // =========================
 
-    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // API Endpoint
-    string powershellScriptPath = "temp";  // Path to save the PowerShell script ("temp" for default temporary path)
-    string unit = "FPS";  // Metric Unit
-    string groupName = "GPU";  // Group name for the metrics
-    string displayName;  // Display Name, set dynamically based on ExtractScoresKey()
-    string metricId;  // Metric Identifier, set dynamically based on displayName
+    // These are fallback defaults if credentials are missing
+    // You can leave these blank for production and rely on secure credential injection entirely.
+    string configurationAccessToken = "";    // Fallback only; prefer ApplicationPassword
+    string viewsetName = "";                 // Fallback only; prefer ApplicationUsername
 
-    // Variables for SPECviewperf execution
-    string viewsetName = "snx"; // The viewset to run (e.g., snx, sw, maya, etc.)
-    string resolution = "1920x1080"; // The resolution to use for the viewset running
-    string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020"; // Working/installation directory path for SVP and RunViewperf.exe
+    // Base connection details (required)
+    string baseUrl = "**********";           // Your base Login Enterprise URL with trailing slash. Ex: https://myLoginEnterprise.myDomain.com/
+    string environmentId = "**********";     // Your environment key/ID (GUID string)
+    string apiEndpoint = "publicApi/v7-preview/platform-metrics";  // Platform Metrics API Endpoint
+    string versionCheckEndpoint = "v8-preview/system/version";     // Used to query server time via HTTP Date header
 
-    int maxProcessRunTimeSeconds = 60 * 60; // Max allowed time for runviewperf.exe to run (in seconds). Note that it should end by itself, so set this to max time tolerance. For example, 60 * 60 means 3600 seconds = 1 hour. If a SVP viewset should never take longer than 1 hour to complete by itself, then this should be kept to 1 hr as a timeout
-    bool terminateExistingProcesses = true; // Terminate existing SVP processes if found
-    int timeoutProcessStartSeconds = 45; // Max time to wait for runviewperf.exe to start running
-    int processCheckIntervalSeconds = 5; // Interval to check if runviewperf.exe is still running
-    int jsFileExistenceTimeoutSeconds = 60; // Max time to wait for the *.js SVP viewset results file to exist
+    // Static metadata for metrics
+    string unit = "FPS";
+    string groupName = "GPU";
+    string displayName;   // Set dynamically from ExtractScoresKey()
+    string metricId;      // specviewperf.viewset.gpu.framerate.{sanitizedDisplayName}
 
-    // Variables for results management
-    string archivePath; // Subdirectory name to store archived results within the SVP path
-    string svpExeName = "RunViewperf.exe"; // Executable name of RunViewperf.exe
-    string viewPerfExeName = "viewperf.exe"; // Executable name of viewperf.exe
-    string resultDirectoryPattern = "results_2*"; // Pattern for results directories within the SVP directory
-    string hostAndUser; // Concatenation of hostname and username
-    Process process; // To access the process across methods
-    string startTimestamp; // Start timestamp of runviewperf
-    string endTimestamp; // End timestamp of runviewperf
-    string jsFilePath; // Path to the .js file found
+    // SPECviewperf execution parameters
+    string resolution = "1920x1080";
+    string svpDirPath = @"C:\SPEC\SPECgpc\SPECviewperf2020";
+    string svpExeName = "RunViewperf.exe";
+    string viewPerfExeName = "viewperf.exe";
 
-    // List to store benchmark data extracted from the .js file
-    List<BenchmarkData> benchmarkDataList = new List<BenchmarkData>();
+    // Process behavior
+    int maxProcessRunTimeSeconds = 60 * 60;
+    bool terminateExistingProcesses = true;
+    int timeoutProcessStartSeconds = 45;
+    int processCheckIntervalSeconds = 5;
+    int jsFileExistenceTimeoutSeconds = 60;
 
-    // Paths to temporary files used in PowerShell script execution
+    // Results handling
+    string resultDirectoryPattern = "results_2*";
+    string archivePath;
+    string hostAndUser;
+    Process process;
+    string startTimestamp;
+    string endTimestamp;
+    string jsFilePath;
+
+    // Drift handling
+    bool driftInitialized = false;
+    TimeSpan serverDrift = TimeSpan.Zero;   // localMidpoint - serverUtc (positive means local is ahead)
+    string driftInfoIso = "";               // Log-friendly snapshot
+
+    // PS upload helper temp files
     string tempScriptFile;
     string payloadFilePath;
 
+    // Parsed benchmark data
+    List<BenchmarkData> benchmarkDataList = new List<BenchmarkData>();
+
     public void Execute()
     {
-        archivePath = Path.Combine(svpDirPath, "resultsArchive"); // Initialize archivePath variable
-        hostAndUser = Environment.MachineName + " " + Environment.UserName; // Initialize hostAndUser variable
+        archivePath = Path.Combine(svpDirPath, "resultsArchive");
+        hostAndUser = Environment.MachineName + " " + Environment.UserName;
 
-        try // Perform actions in the workload
+        try
         {
+            // 1) Secure credentials injection
+            InitializeCredentials();
+
+            // 2) Server-time drift discovery (ABORT if unreachable)
+            InitializeServerDriftOrAbort();
+
+            // 3) Usual flow
             CheckAndTerminateExistingProcesses();
             MoveExistingResultsToArchive();
             RunSPECviewperf();
             CreateStartEndEvent();
             CheckForResultsAndJsFile();
             WaitForJsFileToBeReady();
-            ParseJsFile();
+            ParseJsFile(); // also sets displayName & metricId
 
-            // Check if metricId is set
             if (string.IsNullOrEmpty(metricId))
             {
                 Log("metricId is not set. Exiting...");
@@ -94,12 +117,190 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    void CheckAndTerminateExistingProcesses() // Check and terminate existing processes
+    // =========================
+    // Initialization helpers
+    // =========================
+    void InitializeCredentials()
+    {
+        // We try in this order:
+        //  1) Secure Application credentials (ApplicationUsername / ApplicationPassword)
+        //  2) Environment variables (ApplicationUser / ApplicationPassword / LE_APP_USERNAME / LE_APP_PASSWORD)
+        //  3) Script fallback fields (viewsetName / configurationAccessToken)
+
+        string credUser = TryGetScriptVariable("ApplicationUsername")
+                          ?? TryGetScriptVariable("ApplicationUser")
+                          ?? Environment.GetEnvironmentVariable("ApplicationUser")
+                          ?? Environment.GetEnvironmentVariable("LE_APP_USERNAME");
+
+        string credPass = TryGetScriptVariable("ApplicationPassword")
+                          ?? Environment.GetEnvironmentVariable("ApplicationPassword")
+                          ?? Environment.GetEnvironmentVariable("LE_APP_PASSWORD");
+
+        if (!string.IsNullOrWhiteSpace(credUser))
+        {
+            viewsetName = credUser.Trim();
+            Log($"[Creds] ViewsetName received via secure Application credentials: '{viewsetName}'.");
+        }
+        else if (!string.IsNullOrWhiteSpace(viewsetName))
+        {
+            Log($"[Creds] Using fallback viewsetName: '{viewsetName}'.");
+        }
+        else
+        {
+            // As a last resort default to snx
+            viewsetName = "snx";
+            Log("[Creds] No secure username provided; defaulting viewsetName to 'snx'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(credPass))
+        {
+            configurationAccessToken = credPass.Trim();
+            Log("[Creds] configurationAccessToken provided via secure Application credentials.");
+        }
+        else if (!string.IsNullOrWhiteSpace(configurationAccessToken))
+        {
+            Log("[Creds] Using fallback configurationAccessToken (not recommended).");
+        }
+        else
+        {
+            AbortRun("Missing configurationAccessToken. Provide via secure Application credentials (ApplicationPassword).");
+        }
+    }
+
+    string TryGetScriptVariable(string name)
+    {
+        try
+        {
+            // Attempt property on this instance by reflection
+            var prop = this.GetType().GetProperty(name);
+            if (prop != null)
+            {
+                var val = prop.GetValue(this) as string;
+                if (!string.IsNullOrWhiteSpace(val))
+                    return val;
+            }
+        }
+        catch { /* ignore */ }
+
+        try
+        {
+            // Attempt field on this instance by reflection
+            var field = this.GetType().GetField(name);
+            if (field != null)
+            {
+                var val = field.GetValue(this) as string;
+                if (!string.IsNullOrWhiteSpace(val))
+                    return val;
+            }
+        }
+        catch { /* ignore */ }
+
+        return null;
+    }
+
+    void InitializeServerDriftOrAbort()
+    {
+        Log("[Drift] Starting server time drift discovery...");
+    
+        // Enforce modern TLS (helps on hardened images)
+        ServicePointManager.SecurityProtocol =
+            SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+    
+        // Scope the cert-bypass ONLY around the drift call (lab/self-signed scenarios)
+        var originalCallback = ServicePointManager.ServerCertificateValidationCallback;
+        ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, errors) => true;
+    
+        try
+        {
+            serverDrift = GetServerDrift();
+            driftInitialized = true;
+            driftInfoIso = $"Local(mid) vs Server drift = {serverDrift} (local - server)";
+            Log($"[Drift] Completed. {driftInfoIso}");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Drift] Failed to determine server time drift: {ex.Message}");
+            AbortRun("Cannot verify server time. Aborting to avoid misaligned timestamps.");
+        }
+        finally
+        {
+            // Restore original validation behavior immediately after the check
+            ServicePointManager.ServerCertificateValidationCallback = originalCallback;
+        }
+    }
+
+    TimeSpan GetServerDrift()
+    {
+        // We issue a lightweight HEAD-style GET to version endpoint
+        // and use the HTTP Date header, adjusted by half the RTT.
+        string uri = CombineUrl(baseUrl, versionCheckEndpoint);
+        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(uri);
+        req.Method = "GET";
+        req.Accept = "application/json";
+        req.Timeout = 5000;
+        req.Headers.Add("Authorization", "Bearer " + configurationAccessToken);
+
+        DateTimeOffset localBefore = DateTimeOffset.Now;
+        using (var resp = (HttpWebResponse)req.GetResponse())
+        {
+            DateTimeOffset localAfter = DateTimeOffset.Now;
+
+            // Parse server time from standard HTTP Date header
+            string dateHeader = resp.Headers["Date"];
+            if (string.IsNullOrWhiteSpace(dateHeader))
+                throw new Exception("HTTP Date header was not present in server response.");
+
+            DateTimeOffset serverDto;
+            if (!DateTimeOffset.TryParse(dateHeader, out serverDto))
+                throw new Exception("HTTP Date header could not be parsed.");
+
+            // Compute half the round-trip and estimate local at midpoint
+            TimeSpan roundTrip = localAfter - localBefore;
+            TimeSpan halfRt = TimeSpan.FromTicks(roundTrip.Ticks / 2);
+            DateTimeOffset localMidpoint = localBefore + halfRt;
+
+            // Drift is localMidpoint - serverUtc
+            DateTime serverUtc = serverDto.UtcDateTime;
+            DateTime localMidUtc = localMidpoint.UtcDateTime;
+
+            // Logging detail
+            Log($"[Drift] Server time (UTC): {serverUtc:yyyy-MM-ddTHH:mm:ssZ}");
+            Log($"[Drift] Local before:      {localBefore.UtcDateTime:yyyy-MM-ddTHH:mm:ssZ}");
+            Log($"[Drift] Local after:       {localAfter.UtcDateTime:yyyy-MM-ddTHH:mm:ssZ}");
+            Log($"[Drift] Local midpoint:    {localMidUtc:yyyy-MM-ddTHH:mm:ssZ}");
+
+            TimeSpan drift = localMidUtc - serverUtc;
+            Log($"[Drift] Determined drift:  {drift}");
+            return drift;
+        }
+    }
+
+    string CombineUrl(string baseUrlValue, string path)
+    {
+        string a = baseUrlValue?.Trim() ?? "";
+        string b = path?.Trim() ?? "";
+        if (!a.EndsWith("/")) a += "/";
+        if (b.StartsWith("/")) b = b.Substring(1);
+        return a + b;
+    }
+
+    void AbortRun(string message)
+    {
+        Log("[ABORT] " + message);
+        // If your environment exposes a hard ABORT() call, you can invoke it here.
+        // For this script engine, throwing an exception halts the workload safely.
+        throw new ApplicationException(message);
+    }
+
+    // =========================
+    // Existing flow (with minor edits)
+    // =========================
+    void CheckAndTerminateExistingProcesses()
     {
         Log("Starting method: CheckAndTerminateExistingProcesses");
 
-        string runViewPerfProcessName = Path.GetFileNameWithoutExtension(svpExeName); // "RunViewperf"
-        string viewPerfProcessName = Path.GetFileNameWithoutExtension(viewPerfExeName); // "viewperf"
+        string runViewPerfProcessName = Path.GetFileNameWithoutExtension(svpExeName);
+        string viewPerfProcessName = Path.GetFileNameWithoutExtension(viewPerfExeName);
 
         Process[] runViewPerfProcesses = Process.GetProcessesByName(runViewPerfProcessName);
         Process[] viewPerfProcesses = Process.GetProcessesByName(viewPerfProcessName);
@@ -114,54 +315,32 @@ public class specViewPerf_Benchmark : ScriptBase
                 {
                     try
                     {
-                        if (!proc.CloseMainWindow())
-                        {
-                            proc.Kill();
-                        }
-                        else
-                        {
-                            if (!proc.WaitForExit(1000))
-                            {
-                                proc.Kill();
-                            }
-                        }
+                        if (!proc.CloseMainWindow()) proc.Kill();
+                        else if (!proc.WaitForExit(1000)) proc.Kill();
+
                         Log($"Terminated {svpExeName} process (ID: {proc.Id}).");
                     }
                     catch (Exception ex)
                     {
                         Log($"Error terminating {svpExeName} process (ID: {proc.Id}): {ex}");
                     }
-                    finally
-                    {
-                        proc.Dispose();
-                    }
+                    finally { proc.Dispose(); }
                 }
 
                 foreach (var proc in viewPerfProcesses)
                 {
                     try
                     {
-                        if (!proc.CloseMainWindow())
-                        {
-                            proc.Kill();
-                        }
-                        else
-                        {
-                            if (!proc.WaitForExit(1000))
-                            {
-                                proc.Kill();
-                            }
-                        }
+                        if (!proc.CloseMainWindow()) proc.Kill();
+                        else if (!proc.WaitForExit(1000)) proc.Kill();
+
                         Log($"Terminated {viewPerfExeName} process (ID: {proc.Id}).");
                     }
                     catch (Exception ex)
                     {
                         Log($"Error terminating {viewPerfExeName} process (ID: {proc.Id}): {ex}");
                     }
-                    finally
-                    {
-                        proc.Dispose();
-                    }
+                    finally { proc.Dispose(); }
                 }
 
                 Log("Existing processes terminated.");
@@ -174,18 +353,16 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    void MoveExistingResultsToArchive() // Move existing SVP results to archive
+    void MoveExistingResultsToArchive()
     {
         Log("Starting method: MoveExistingResultsToArchive");
 
-        // Create resultsArchive directory if it doesn't exist
         if (!Directory.Exists(archivePath))
         {
             Directory.CreateDirectory(archivePath);
             Log($"Created directory: {archivePath}");
         }
 
-        // Get directories that start with "results_2" (non-recursively)
         var directories = Directory.GetDirectories(svpDirPath, resultDirectoryPattern, SearchOption.TopDirectoryOnly);
 
         foreach (var dir in directories)
@@ -193,7 +370,7 @@ public class specViewPerf_Benchmark : ScriptBase
             string dirName = Path.GetFileName(dir);
             string destPath = Path.Combine(archivePath, dirName);
 
-            try // Move the directory to the archive
+            try
             {
                 Directory.Move(dir, destPath);
                 Log($"Successfully moved: {dir} to {destPath}");
@@ -204,28 +381,22 @@ public class specViewPerf_Benchmark : ScriptBase
             }
         }
 
-        // After moving, check that there are no more results_2* directories in svpDirPath
         directories = Directory.GetDirectories(svpDirPath, resultDirectoryPattern, SearchOption.TopDirectoryOnly);
         if (directories.Length > 0)
-        {
             Log("There are still results_2* directories remaining in the source path after moving.");
-        }
         else
-        {
             Log("All results_2* directories have been moved successfully.");
-        }
     }
 
-    void RunSPECviewperf() // Invoke SVP and ensure it's running
+    void RunSPECviewperf()
     {
         Log("Starting method: RunSPECviewperf");
 
-        // Build the command line arguments
+        // Ensure viewsetName has a value (InitializeCredentials sets default if not provided)
         string arguments = $"-viewset {viewsetName} -nogui -resolution {resolution}";
 
         StartTimer("SPECViewPerf_StartTime");
-        
-        // Start the process
+
         process = new Process();
         process.StartInfo.FileName = Path.Combine(svpDirPath, svpExeName);
         process.StartInfo.Arguments = arguments;
@@ -242,10 +413,9 @@ public class specViewPerf_Benchmark : ScriptBase
 
         Log($"{svpExeName} has been started.");
 
-        // Wait for the process to appear in the process list within the timeout
         bool isProcessRunning = false;
         DateTime startWaitTime = DateTime.Now;
-        string runViewPerfProcessName = Path.GetFileNameWithoutExtension(svpExeName); // "RunViewperf"
+        string runViewPerfProcessName = Path.GetFileNameWithoutExtension(svpExeName);
 
         int waitIteration = 0;
         DateTime waitStartTime = DateTime.Now;
@@ -260,7 +430,7 @@ public class specViewPerf_Benchmark : ScriptBase
             TimeSpan elapsed = DateTime.Now - waitStartTime;
             Log($"Waiting for {svpExeName} to start. Wait iteration: {waitIteration}. {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
-            Wait(0.1); // Wait before checking again
+            Wait(0.1);
         }
 
         if (!isProcessRunning)
@@ -270,10 +440,8 @@ public class specViewPerf_Benchmark : ScriptBase
         }
         StopTimer("SPECViewPerf_StartTime");
 
-        // Record the start timestamp
-        startTimestamp = DateTime.Now.ToString("s"); // Start timestamp in sortable date/time pattern
+        startTimestamp = DateTime.Now.ToString("s");
 
-        // Wait for the process to end on its own, checking every processCheckIntervalSeconds
         DateTime processStartTime = DateTime.Now;
         waitIteration = 0;
         waitStartTime = DateTime.Now;
@@ -292,22 +460,20 @@ public class specViewPerf_Benchmark : ScriptBase
         }
         Log($"{svpExeName} has finished running.");
 
-        // Record the end timestamp
-        endTimestamp = DateTime.Now.ToString("s"); // End timestamp in sortable date/time pattern
+        endTimestamp = DateTime.Now.ToString("s");
     }
 
-    void CreateStartEndEvent() // Create event with start and end timestamps
+    void CreateStartEndEvent()
     {
         Log("Starting method: CreateStartEndEvent");
-        string eventTitle = $"{startTimestamp} start, {endTimestamp} end, with {viewsetName}, on {hostAndUser}";
+        string eventTitle = $"{startTimestamp} start, {endTimestamp} end, with {viewsetName}, on {hostAndUser} | {driftInfoIso}";
         CreateEvent(title: eventTitle, description: "");
     }
 
-    void CheckForResultsAndJsFile() // Check for results directory and *.js file
+    void CheckForResultsAndJsFile()
     {
         Log("Starting method: CheckForResultsAndJsFile");
 
-        // Wait for results_2* directory to appear
         DateTime resultWaitStartTime = DateTime.Now;
         string[] resultDirectories;
         int waitIteration = 0;
@@ -319,7 +485,7 @@ public class specViewPerf_Benchmark : ScriptBase
             {
                 Log("Results directory found.");
                 Log($"Results directory name: {resultDirectories[0]}");
-                jsFilePath = FindJsFile(resultDirectories[0]); // Set jsFilePath here
+                jsFilePath = FindJsFile(resultDirectories[0]);
                 break;
             }
             if ((DateTime.Now - resultWaitStartTime).TotalSeconds > jsFileExistenceTimeoutSeconds)
@@ -330,11 +496,11 @@ public class specViewPerf_Benchmark : ScriptBase
             TimeSpan elapsed = DateTime.Now - waitStartTime;
             Log($"Waiting for results directory to appear. Wait iteration: {waitIteration}, {elapsed.TotalSeconds:F0} seconds waiting so far.");
             waitIteration++;
-            Wait(1); // Wait 1 second before checking again
+            Wait(1);
         }
     }
 
-    void WaitForJsFileToBeReady() // Wait until JS file is no longer changing
+    void WaitForJsFileToBeReady()
     {
         Log("Starting method: WaitForJsFileToBeReady");
 
@@ -343,7 +509,7 @@ public class specViewPerf_Benchmark : ScriptBase
 
         long lastFileSize = -1;
         int stableCounter = 0;
-        const int stableThreshold = 3; // Number of consecutive checks with same size to consider stable
+        const int stableThreshold = 3;
 
         while (true)
         {
@@ -366,7 +532,7 @@ public class specViewPerf_Benchmark : ScriptBase
             }
             else
             {
-                stableCounter = 0; // Reset counter if size changes
+                stableCounter = 0;
             }
             lastFileSize = currentFileSize;
             Log($"Waiting for JS file to stabilize. Current size: {currentFileSize} bytes.");
@@ -374,9 +540,8 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    string FindJsFile(string resultsDirectory) // Find the .js file in the results directory
+    string FindJsFile(string resultsDirectory)
     {
-        // Search for the first .js file in the results directory
         var jsFiles = Directory.GetFiles(resultsDirectory, "*.js", SearchOption.TopDirectoryOnly);
         if (jsFiles.Length > 0)
         {
@@ -390,25 +555,20 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    void ParseJsFile() // Parse the .js file to extract benchmark data
+    void ParseJsFile()
     {
         Log("Starting method: ParseJsFile");
         try
         {
             string fileContent = ReadJsFile();
 
-            // Extract and log the first key in the "Scores" section
             string scoresKey = ExtractScoresKey(fileContent);
-            Log($"Viewset name: {scoresKey}");
-            displayName = scoresKey; // Set displayName dynamically
+            Log($"Viewset name (from results): {scoresKey}");
+            displayName = scoresKey;
 
-            // Sanitize displayName for use in metricId
             string sanitizedDisplayName = Regex.Replace(displayName, @"[^a-zA-Z0-9_\.]+", "_");
-
-            // Set metricId based on sanitizedDisplayName
             metricId = $"specviewperf.viewset.gpu.framerate.{sanitizedDisplayName}";
 
-            // Extract and store all benchmark data iteratively
             ExtractAllBenchmarkData(fileContent);
         }
         catch (Exception ex)
@@ -417,7 +577,7 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    private string ReadJsFile() // Read the content of the .js file
+    private string ReadJsFile()
     {
         if (string.IsNullOrEmpty(jsFilePath))
             throw new InvalidOperationException("JS file path is not set.");
@@ -428,28 +588,23 @@ public class specViewPerf_Benchmark : ScriptBase
         return File.ReadAllText(jsFilePath);
     }
 
-    private string ExtractScoresKey(string content) // Extract the Scores key from the .js file
+    private string ExtractScoresKey(string content)
     {
-        // Pattern to find the first key inside "Scores": {
         string pattern = @"""Scores"":\s*{\s*""([^""]+)""\s*:";
         Match match = Regex.Match(content, pattern, RegexOptions.Singleline);
 
         if (match.Success && match.Groups.Count > 1)
-        {
             return match.Groups[1].Value;
-        }
-        else
-        {
-            throw new Exception("Scores key not found.");
-        }
+
+        throw new Exception("Scores key not found.");
     }
 
-    private void ExtractAllBenchmarkData(string content) // Extract benchmark data
+    private void ExtractAllBenchmarkData(string content)
     {
         int index = 1;
         bool foundMore = true;
 
-        benchmarkDataList = new List<BenchmarkData>(); // Initialize the list
+        benchmarkDataList = new List<BenchmarkData>();
 
         while (foundMore)
         {
@@ -474,34 +629,25 @@ public class specViewPerf_Benchmark : ScriptBase
                 string timeStamp = ExtractValue(blockContent, timeStampPattern);
                 string name = ExtractValue(blockContent, namePattern);
 
-                // Convert fps to double
                 if (!double.TryParse(fps, out double fpsValue))
-                {
                     throw new Exception($"Invalid FPS value: {fps}");
-                }
 
-                // Parse timeOffset into a TimeSpan
-                if (!TryParseTimeOffset(timeOffset, out TimeSpan offset))
+                // Parse original timestamp (from SVP) with best-effort formats
+                DateTime original;
+                if (!DateTime.TryParseExact(timeStamp, "MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out original))
                 {
-                    throw new Exception($"Invalid time offset format: {timeOffset}");
-                }
-
-                // Parse the original timestamp
-                if (!DateTime.TryParseExact(timeStamp, "MM/dd/yy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dateTime))
-                {
-                    // Try other possible formats if necessary
-                    if (!DateTime.TryParse(timeStamp, out dateTime))
-                    {
+                    if (!DateTime.TryParse(timeStamp, out original))
                         throw new Exception($"Invalid TimeStamp format: {timeStamp}");
-                    }
                 }
 
-                // Adjust the time to UTC by subtracting the offset
-                DateTime utcDateTime = dateTime - offset;
+                // Adjust to UTC using discovered drift: serverUtc = localObserved - drift
+                // Here 'original' is a local wall clock time captured by SVP; we convert to corresponding server-aligned UTC
+                if (!driftInitialized)
+                    throw new Exception("Server drift not initialized before parsing timestamps.");
 
-                string isoTimeStamp = utcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
+                DateTime utcAligned = original.ToUniversalTime().Add(-serverDrift); // remove our measured local-minus-server drift
+                string isoTimeStamp = utcAligned.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
 
-                // Create a BenchmarkData object
                 var data = new BenchmarkData
                 {
                     Index = index,
@@ -511,14 +657,13 @@ public class specViewPerf_Benchmark : ScriptBase
                     IsoTimeStamp = isoTimeStamp
                 };
 
-                // Add to the list
                 benchmarkDataList.Add(data);
 
-                // Log the data
                 Log($"Index: {index}");
                 Log($"  FPS: {fps}");
-                Log($"  TimeStamp: {timeStamp}");
-                Log($"  ISO TimeStamp: {isoTimeStamp}");
+                Log($"  Raw TimeStamp: {timeStamp}");
+                Log($"  Drift applied: {serverDrift}");
+                Log($"  ISO (UTC Z):  {isoTimeStamp}");
                 Log($"  Name: {name}");
 
                 index++;
@@ -531,58 +676,19 @@ public class specViewPerf_Benchmark : ScriptBase
         }
     }
 
-    private bool TryParseTimeOffset(string timeOffsetStr, out TimeSpan offset) // Handle time offset parsing
-    {
-        offset = TimeSpan.Zero;
-
-        if (string.IsNullOrWhiteSpace(timeOffsetStr))
-            return false;
-
-        // Remove whitespace
-        timeOffsetStr = timeOffsetStr.Trim();
-
-        // Handle '+' or '-' sign
-        bool isNegative = false;
-        if (timeOffsetStr.StartsWith("+"))
-        {
-            timeOffsetStr = timeOffsetStr.Substring(1);
-        }
-        else if (timeOffsetStr.StartsWith("-"))
-        {
-            isNegative = true;
-            timeOffsetStr = timeOffsetStr.Substring(1);
-        }
-
-        // Try parsing the time offset
-        if (TimeSpan.TryParse(timeOffsetStr, out TimeSpan parsedOffset))
-        {
-            offset = isNegative ? parsedOffset.Negate() : parsedOffset;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    private string ExtractValue(string input, string pattern) // Extract value using regex
+    private string ExtractValue(string input, string pattern)
     {
         Match match = Regex.Match(input, pattern, RegexOptions.Singleline);
         if (match.Success && match.Groups.Count > 1)
-        {
             return match.Groups[1].Value;
-        }
-        else
-        {
-            throw new Exception($"Pattern not found: {pattern}");
-        }
+
+        throw new Exception($"Pattern not found: {pattern}");
     }
 
-    void GeneratePowerShellScript() // Generate PowerShell script content
+    void GeneratePowerShellScript()
     {
         Log("Starting method: GeneratePowerShellScript");
 
-        // Manually build the JSON payload
         StringBuilder payloadBuilder = new StringBuilder();
         payloadBuilder.Append("[");
 
@@ -602,60 +708,51 @@ public class specViewPerf_Benchmark : ScriptBase
             payloadBuilder.Append("}");
 
             if (i < benchmarkDataList.Count - 1)
-            {
                 payloadBuilder.Append(",");
-            }
         }
 
         payloadBuilder.Append("]");
 
         string payload = payloadBuilder.ToString();
 
-        // Determine the path to save the PowerShell script and payload
-        if (powershellScriptPath.ToLower() == "temp")
+        if (string.Equals("temp", "temp", StringComparison.OrdinalIgnoreCase))
         {
             tempScriptFile = Path.GetTempFileName() + ".ps1";
             payloadFilePath = Path.GetTempFileName() + ".json";
         }
         else
         {
-            tempScriptFile = Path.Combine(powershellScriptPath, "UploadPlatformMetrics.ps1");
-            payloadFilePath = Path.Combine(powershellScriptPath, "payload.json");
+            tempScriptFile = Path.Combine(Path.GetTempPath(), "UploadPlatformMetrics.ps1");
+            payloadFilePath = Path.Combine(Path.GetTempPath(), "payload.json");
         }
 
-        // Write payload to the determined path
         File.WriteAllText(payloadFilePath, payload);
 
-        // Create the PowerShell script content
+        string fullUrl = CombineUrl(baseUrl, apiEndpoint);
         string scriptContent = $@"
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{ $true }}
 
 $configurationAccessToken = '{configurationAccessToken}'
-$fullUrl = '{baseUrl}{apiEndpoint}'
+$fullUrl = '{fullUrl}'
 $payloadFile = '{payloadFilePath.Replace("\\", "\\\\")}'
 
-### Read payload from file ###
 $payload = Get-Content -Path $payloadFile -Raw
 
-### Debug: Output JSON Payload ###
 Write-Host 'JSON Payload:'
 Write-Host $payload
 
-### Create HttpWebRequest ###
 $request = [System.Net.HttpWebRequest]::Create($fullUrl)
 $request.Method = 'POST'
 $request.ContentType = 'application/json'
 $request.Accept = 'application/json'
 $request.Headers.Add('Authorization', 'Bearer ' + $configurationAccessToken)
 
-# Write JSON Payload to Request Body
 $byteArray = [System.Text.Encoding]::UTF8.GetBytes($payload)
 $request.ContentLength = $byteArray.Length
 $requestStream = $request.GetRequestStream()
 $requestStream.Write($byteArray, 0, $byteArray.Length)
 $requestStream.Close()
 
-### Send Request and Handle Response ###
 try {{
     Write-Host ""$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] - Sending POST request to $fullUrl...""
     $response = $request.GetResponse()
@@ -682,11 +779,10 @@ try {{
 }}
 ";
 
-        // Write the PowerShell script to the specified location
         File.WriteAllText(tempScriptFile, scriptContent);
     }
 
-    void UploadPlatformMetricsPowerShellRunner() // Run the PowerShell script to upload platform metrics
+    void UploadPlatformMetricsPowerShellRunner()
     {
         Log("Starting method: UploadPlatformMetricsPowerShellRunner");
         try
@@ -705,20 +801,15 @@ try {{
             {
                 process.StartInfo = psi;
 
-                // Event handlers to capture asynchronous output
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
-                    {
                         Log(e.Data);
-                    }
                 };
                 process.ErrorDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
-                    {
                         Log("Error: " + e.Data);
-                    }
                 };
 
                 process.Start();
@@ -733,30 +824,23 @@ try {{
         }
         finally
         {
-            // Clean up the temporary files
-            if (File.Exists(tempScriptFile))
-                File.Delete(tempScriptFile);
-            if (File.Exists(payloadFilePath))
-                File.Delete(payloadFilePath);
+            try { if (File.Exists(tempScriptFile)) File.Delete(tempScriptFile); } catch { }
+            try { if (File.Exists(payloadFilePath)) File.Delete(payloadFilePath); } catch { }
         }
     }
 
-    // Helper method to escape strings for JSON
     private string EscapeString(string s)
     {
-        if (string.IsNullOrEmpty(s))
-            return "";
-
+        if (string.IsNullOrEmpty(s)) return "";
         return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
-    // Class to store benchmark data
     class BenchmarkData
     {
         public int Index { get; set; }
-        public string Name { get; set; }  // Corresponds to 'instance' in the API
-        public double Fps { get; set; }  // Corresponds to 'value' in the API
-        public string TimeStamp { get; set; }  // Original timestamp
-        public string IsoTimeStamp { get; set; }  // Adjusted to UTC and formatted in ISO 8601
+        public string Name { get; set; }
+        public double Fps { get; set; }
+        public string TimeStamp { get; set; }   // Original timestamp from SVP
+        public string IsoTimeStamp { get; set; } // Drift-aligned UTC Z
     }
 }
